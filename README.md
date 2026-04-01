@@ -1,9 +1,9 @@
-# noisiq
-noisiq is a visual quantum-circuit playground that lets you see noise in action. User's can inject, tune, and simulate errors as they propagate through the circuit over time.
+# NoisiQ
+NoisiQ is a visual quantum-circuit playground that lets you see noise in action. User's can inject, tune, and simulate errors as they propagate through the circuit over time.
 
 EXAMPLE : 
 
-[Noisiq-Example](https://github.com/user-attachments/assets/f21d3b45-6cc1-46ec-916f-31b68e427df0)
+[NoisiQ-Example](https://github.com/user-attachments/assets/f21d3b45-6cc1-46ec-916f-31b68e427df0)
 
 
 
