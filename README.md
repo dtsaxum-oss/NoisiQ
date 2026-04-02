@@ -136,7 +136,7 @@ We welcome contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before 
 
 - David Saxum — [GitHub](https://github.com/<dtsaxum-oss>)
 - Teddy Jones— [GitHub](https://github.com/TeddyJ0nes)
-- Giovanni Castorina — [GitHub](https://github.com/<gio>)
+- Giovanni Castorina — [GitHub](https://github.com/<cgio2003>)
 
 Faculty sponsors: Prof. Niknam, Prof. Ross
 
