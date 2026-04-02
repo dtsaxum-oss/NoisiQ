@@ -1,4 +1,139 @@
+# =============================================================================
+# NOISIQ — .gitignore
+# Python 3.10+ | macOS | Jupyter | pytest
+# =============================================================================
+# This file tells Git which files and folders to ignore
+# =============================================================================
+
+.venv/
+venv/
+env/
+ENV/
+
+
+# -----------------------------------------------------------------------------
+# PYTHON CACHE FILES
+# Python automatically generates these when it runs your code.
+# They are machine-specific bytecode and should never be in version control.
+# -----------------------------------------------------------------------------
 __pycache__/
 *.py[cod]
+*$py.class
+*.pyo
+
+
+# -----------------------------------------------------------------------------
+# PACKAGE BUILD ARTIFACTS
+# These are generated when you build or install the package locally.
+# They are reproducible and should not be committed.
+# -----------------------------------------------------------------------------
 *.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+*.whl
+MANIFEST
+
+
+# -----------------------------------------------------------------------------
+# JUPYTER NOTEBOOKS
+# Jupyter saves automatic checkpoint backups in this hidden folder.
+# These are not source files.
+# Note: The actual .ipynb notebook files themselves ARE committed —
+# only the auto-generated checkpoints are ignored.
+# -----------------------------------------------------------------------------
 .ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+
+# -----------------------------------------------------------------------------
+# TESTING AND COVERAGE
+# pytest and coverage tools generate these folders and files during test runs.
+# They are outputs, not source.
+# -----------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+
+# -----------------------------------------------------------------------------
+# MACOS SYSTEM FILES
+# macOS automatically creates these hidden files in every folder it touches.
+# They store folder display preferences.
+# -----------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+
+# -----------------------------------------------------------------------------
+# EDITOR AND IDE FILES
+# Editor config files are personal and should not be forced on others via the repo.
+# -----------------------------------------------------------------------------
+
+# VSCode
+.vscode/
+
+# PyCharm / JetBrains
+.idea/
+*.iml
+
+# Spyder
+.spyderproject.cfg
+.spyproject/
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+
+
+# -----------------------------------------------------------------------------
+# ENVIRONMENT VARIABLES AND SECRETS
+# If any API keys, tokens, or credentials are ever used, they must live in
+# a .env file — and that file must NEVER be committed.
+# -----------------------------------------------------------------------------
+.env
+.env.*
+*.secret
+
+
+# -----------------------------------------------------------------------------
+# LOGS AND TEMPORARY FILES
+# Runtime logs and temporary outputs generated during development.
+# These are noise in the version history.
+# -----------------------------------------------------------------------------
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+
+# -----------------------------------------------------------------------------
+# DATA FILES
+# Large data files should not live in the repo. If test data or example
+# circuits are needed, keep them small (< 1 MB) and deliberate.
+# Larger datasets should be linked externally or stored in a data store. 
+# If you end up wanting to include small, example circuits or test fixtures, 
+# you can force-add with git add -f filename to override the ignore rule.
+# -----------------------------------------------------------------------------
+*.csv
+*.npy
+*.npz
+*.h5
+*.hdf5
+
+
+# -----------------------------------------------------------------------------
+# DOCUMENTATION BUILD OUTPUTS
+# If/when we add auto-generated docs (e.g., via Sphinx), the build output
+# is generated and should not be committed — only the source configs.
+# -----------------------------------------------------------------------------
+docs/_build/
+docs/_autosummary/
+site/
