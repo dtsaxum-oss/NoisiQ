@@ -62,9 +62,9 @@ classifiers = [
 
 # Author information 
 authors = [
-    { name = "David Saxum",   email = "<dtsaxum@ucla.edu>"  },
-    { name = "Teddy Jones",   email = "<ejones43@g.ucla.edu>"  },
-    { name = "Giovanni Castorina",     email = "<gio-email>"    },
+    { name = "David Saxum",             email = "dtsaxum@ucla.edu"  },
+    { name = "Teddy Jones",             email = "ejones43@g.ucla.edu"  },
+    { name = "Giovanni Castorina",      email = "giocasto@icloud.com"    },
 ]
 
 
@@ -130,10 +130,10 @@ adapters = [
 # Links that appear on the PyPI project page.
 # -----------------------------------------------------------------------------
 [project.urls]
-Homepage      = "https://github.com/<dtsaxum-oss>/noisiq"
-Repository    = "https://github.com/<dtsaxum-oss>/noisiq"
-Issues        = "https://github.com/<dtsaxum-oss>/noisiq/issues"
-Changelog     = "https://github.com/<dtsaxum-oss>/noisiq/blob/main/CHANGELOG.md"
+Homepage      = "https://github.com/dtsaxum-oss/noisiq"
+Repository    = "https://github.com/dtsaxum-oss/noisiq"
+Issues        = "https://github.com/dtsaxum-oss/noisiq/issues"
+Changelog     = "https://github.com/dtsaxum-oss/noisiq/blob/main/CHANGELOG.md"
 
 
 # -----------------------------------------------------------------------------
@@ -206,4 +206,4 @@ ignore = ["E501"]
 # notebooks, or other non-package content in the distributed wheel.
 # -----------------------------------------------------------------------------
 [tool.hatch.build.targets.wheel]
-packages = ["noisiq"]
+include = ["noisiq"]
