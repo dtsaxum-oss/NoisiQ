@@ -1,3 +1,3 @@
-from .type import Frame, RunResult
+from .type import Frame, PauliFrameRun, SimulationResult
 
-__all__ = ["Frame", "RunResult"]
+__all__ = ["SimulationResult", "Frame", "PauliFrameRun"]
