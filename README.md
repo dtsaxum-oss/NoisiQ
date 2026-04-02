@@ -135,8 +135,8 @@ We welcome contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before 
 ## Authors
 
 - David Saxum — [GitHub](https://github.com/<dtsaxum-oss>)
-- Teddy Full name— [GitHub](https://github.com/<teddy>)
-- Gio Full name — [GitHub](https://github.com/<gio>)
+- Teddy Jones— [GitHub](https://github.com/TeddyJ0nes)
+- Giovanni Castorina — [GitHub](https://github.com/<gio>)
 
 Faculty sponsors: Prof. Niknam, Prof. Ross
 
@@ -150,7 +150,7 @@ If you use NoisiQ in your research, please cite:
 
 ```bibtex
 @software{noisiq2026,
-  author  = {David Saxum and Teddy Full Name and Gio Full Name},
+  author  = {David Saxum and Teddy Jones and Giovanni Castorina},
   title   = {NoisiQ: Noise-Aware Quantum Circuit Simulation and Visualization},
   year    = {2026},
   url     = {https://github.com/<dtsaxum-oss>/noisiq},
@@ -163,4 +163,4 @@ If you use NoisiQ in your research, please cite:
 ## License
 
 NoisiQ is released under the [MIT License](LICENSE).  
-Copyright (c) 2026 David Saxum, Teddy Full Name, Gio Full Name
+Copyright (c) 2026 David Saxum, Teddy Jones, Giovanni Castorina

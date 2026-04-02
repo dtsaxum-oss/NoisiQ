@@ -63,8 +63,8 @@ classifiers = [
 # Author information 
 authors = [
     { name = "David Saxum",   email = "<dtsaxum@ucla.edu>"  },
-    { name = "Teddy Full Name",   email = "<teddy-email>"  },
-    { name = "Gio Full Name",     email = "<gio-email>"    },
+    { name = "Teddy Jones",   email = "<ejones43@g.ucla.edu>"  },
+    { name = "Giovanni Castorina",     email = "<gio-email>"    },
 ]
 
 
