@@ -103,7 +103,7 @@ test = [
 # Development tools — required to contribute to noisiq
 dev = [
     # Include all test dependencies
-    {test},
+    "noisiq[test]",
     "jupyter>=1.0",          # Jupyter notebook environment
     "ipywidgets>=8.0",       # Interactive widgets inside notebooks
     "ipympl>=0.9",           # Interactive matplotlib inside notebooks
