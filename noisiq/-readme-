@@ -1,7 +1,0 @@
-SRC - is the "backend" of the simulator, the root folder of this project. 
-
-backend/ will be the simulation code, current plan is a fast engine for Pauli-frame propagation right now, and later a slower-but-more-accurate density matrix engine.
-
-noise/ code for types of noise allowed, like depolarizing noise, dephasing noise, amplitude damping, to start, later, modality specific qubit noise.
-
-results/ output from simulations will “frames” for animation, plus summary stats. Later add in qiskit plots / heat maps in a circuit for where noise is most impactful on circuit / causes most destruction. 
