@@ -17,14 +17,15 @@ class SimulationResult:
     This object standardizes the output from different simulation backends.
 
     Attributes:
-        final_state: The final quantum state of the system, which could be
-                     a statevector (for pure state simulation) or a density
-                     matrix (for noisy simulation).
+        final_state: The final quantum state of the system, represented as a
+                     numpy array. For pure state simulation, it is a 1D array
+                     of complex numbers (statevector). For noisy simulation,
+                     it is a 2D array of complex numbers (density matrix).
         counts: A dictionary of measurement outcomes if the circuit was
                 simulated with shots. Keys are bitstrings, values are counts.
     """
 
-    final_state: np.ndarray
+    final_state: np.typing.NDArray[np.complex128]
     counts: Optional[Counts] = None
 
     def __repr__(self) -> str:
