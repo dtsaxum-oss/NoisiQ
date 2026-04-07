@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noisiq Project Gantt Chart</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #fafafa;
+            padding: 2rem;
+            color: #1a1a1a;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 8px;
+        }
+        
+        button {
+            padding: 8px 16px;
+            font-size: 13px;
+            border: 1px solid #d0d0d0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        button:hover {
+            background: #f5f5f5;
+            border-color: #b0b0b0;
+        }
+        
+        button:active {
+            transform: scale(0.98);
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 1.5rem;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .legend-box {
+            width: 16px;
+            height: 8px;
+            border-radius: 2px;
+        }
+        
+        .timeline-header {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 16px;
+            margin-bottom: 8px;
+            padding: 0 12px;
+        }
+        
+        .timeline-header-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #666;
+        }
+        
+        .week-numbers {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+        }
+        
+        .week-container {
+            margin-bottom: 8px;
+        }
+        
+        .week-bar {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 16px;
+            align-items: center;
+            padding: 12px;
+            background: #f8f8f8;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        
+        .week-bar:hover {
+            background: #f0f0f0;
+        }
+        
+        .week-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .expand-icon {
+            font-size: 16px;
+            user-select: none;
+            transition: transform 0.2s;
+        }
+        
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .week-label {
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .week-dates {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+        }
+        
+        .timeline-cell {
+            height: 32px;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .timeline-cell.active {
+            position: relative;
+        }
+        
+        .timeline-cell.critical {
+            border: 2px solid #f59e0b;
+        }
+        
+        .critical-indicator {
+            position: absolute;
+            top: -8px;
+            right: 2px;
+            font-size: 10px;
+        }
+        
+        .milestone-title {
+            padding: 8px 12px 4px 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .deliverables {
+            padding: 4px 12px 8px 40px;
+        }
+        
+        .deliverable-item {
+            font-size: 13px;
+            color: #666;
+            padding: 4px 0;
+            display: flex;
+            align-items: start;
+            gap: 8px;
+        }
+        
+        .bullet {
+            color: #999;
+            flex-shrink: 0;
+        }
+        
+        .dependency {
+            padding: 0 12px 8px 40px;
+            font-size: 12px;
+            color: #f59e0b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>Noisiq Project Timeline</h1>
+                <p class="subtitle">10-week quantum circuit noise simulation build</p>
+            </div>
+            <div class="controls">
+                <button id="expandAll">Expand all</button>
+                <button id="collapseAll">Collapse all</button>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-box" style="background: #E6F1FB;"></div>
+                <span>Foundation</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #7F77DD;"></div>
+                <span>Core features</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #1D9E75;"></div>
+                <span>Extensions</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box" style="background: #888780;"></div>
+                <span>Polish & delivery</span>
+            </div>
+        </div>
+        
+        <div class="timeline-header">
+            <div class="timeline-header-label">Milestone</div>
+            <div class="week-numbers">
+                <div>W1</div><div>W2</div><div>W3</div><div>W4</div><div>W5</div>
+                <div>W6</div><div>W7</div><div>W8</div><div>W9</div><div>W10</div>
+            </div>
+        </div>
+        
+        <div id="ganttContainer"></div>
+    </div>
+    
+    <script>
+        // Project data (can be edited here or loaded from external source)
+        const weeks = [{"week": 1, "dates": "Mar 23–29, 2026", "milestone": "Repo + Circuit skeleton", "deliverables": ["Installable package skeleton", "Circuit/Operation + validation", "CI + tests running"], "phase": "foundation", "critical": false, "depends_on": null}, {"week": 2, "dates": "Mar 30–Apr 05, 2026", "milestone": "Pauli-frame backend", "deliverables": ["Deterministic Pauli-frame propagation", "User-specified error injection"], "phase": "foundation", "critical": true, "depends_on": null}, {"week": 3, "dates": "Apr 06–12, 2026", "milestone": "Propagation animation", "deliverables": ["Circuit drawing + animation", "First demo notebook", "Propagation movie/GIF"], "phase": "core", "critical": false, "depends_on": 2}, {"week": 4, "dates": "Apr 13–19, 2026", "milestone": "Pauli noise + aggregation", "deliverables": ["Pauli channels (dephasing, depolarizing)", "Many-shot runner", "First aggregate heatmap"], "phase": "core", "critical": false, "depends_on": null}, {"week": 5, "dates": "Apr 20–26, 2026", "milestone": "Correctness harness", "deliverables": ["Expanded unit tests", "Randomized checks", "Small-circuit spot checks vs trusted sims"], "phase": "core", "critical": false, "depends_on": null}, {"week": 6, "dates": "Apr 27–May 03, 2026", "milestone": "Non-Pauli decoherence MVP", "deliverables": ["Amplitude damping (T1)", "Dephasing (T2/Tphi) via trajectories", "Comparisons to Pauli approximations"], "phase": "extensions", "critical": false, "depends_on": null}, {"week": 7, "dates": "May 04–10, 2026", "milestone": "Coherent control errors", "deliverables": ["Over/under-rotation model on select gates", "Demonstrate systematic vs stochastic behavior"], "phase": "extensions", "critical": false, "depends_on": null}, {"week": 8, "dates": "May 11–17, 2026", "milestone": "Adapters (import circuits)", "deliverables": ["Adapter functions from Qiskit or Cirq", "Convert to Noisiq IR", "Documented examples"], "phase": "extensions", "critical": false, "depends_on": null}, {"week": 9, "dates": "May 18–24, 2026", "milestone": "Noise suppression demo", "deliverables": ["Dynamical decoupling-style suppression", "Before/after visual", "Aggregate improvement metrics"], "phase": "extensions", "critical": false, "depends_on": null}, {"week": 10, "dates": "May 25–31, 2026", "milestone": "Polish + final package", "deliverables": ["Documentation", "Examples", "Performance cleanup", "Final validation runs", "Presentation notebook + report"], "phase": "polish", "critical": false, "depends_on": null}];
+        
+        // Phase colors matching the legend
+        const phaseColors = {
+            foundation: '#E6F1FB',
+            core: '#7F77DD',
+            extensions: '#1D9E75',
+            polish: '#888780'
+        };
+        
+        // Track which weeks are expanded
+        let expandedWeeks = new Set();
+        
+        /**
+         * Render the entire Gantt chart
+         */
+        function renderGantt() {
+            const container = document.getElementById('ganttContainer');
+            container.innerHTML = '';
+            
+            weeks.forEach((week, idx) => {
+                const weekDiv = document.createElement('div');
+                weekDiv.className = 'week-container';
+                
+                // Main week bar
+                const weekBar = document.createElement('div');
+                weekBar.className = 'week-bar';
+                
+                const isExpanded = expandedWeeks.has(week.week);
+                
+                // Left side: Week info
+                const weekInfo = document.createElement('div');
+                weekInfo.className = 'week-info';
+                weekInfo.innerHTML = `
+                    <span class="expand-icon ${isExpanded ? 'expanded' : ''}">▶</span>
+                    <div>
+                        <div class="week-label">Week ${week.week}</div>
+                        <div class="week-dates">${week.dates}</div>
+                    </div>
+                `;
+                
+                // Right side: Timeline grid
+                const timelineGrid = document.createElement('div');
+                timelineGrid.className = 'timeline-grid';
+                
+                weeks.forEach((w, i) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'timeline-cell';
+                    
+                    if (i === idx) {
+                        cell.classList.add('active');
+                        cell.style.background = phaseColors[week.phase];
+                        
+                        if (week.critical) {
+                            cell.classList.add('critical');
+                            cell.innerHTML = '<div class="critical-indicator">⚡</div>';
+                        }
+                    }
+                    
+                    timelineGrid.appendChild(cell);
+                });
+                
+                weekBar.appendChild(weekInfo);
+                weekBar.appendChild(timelineGrid);
+                
+                // Click handler for expand/collapse
+                weekBar.onclick = () => {
+                    if (expandedWeeks.has(week.week)) {
+                        expandedWeeks.delete(week.week);
+                    } else {
+                        expandedWeeks.add(week.week);
+                    }
+                    renderGantt();
+                };
+                
+                weekDiv.appendChild(weekBar);
+                
+                // Milestone title
+                const milestoneTitle = document.createElement('div');
+                milestoneTitle.className = 'milestone-title';
+                milestoneTitle.textContent = week.milestone;
+                weekDiv.appendChild(milestoneTitle);
+                
+                // Deliverables (shown when expanded)
+                if (isExpanded) {
+                    const deliverables = document.createElement('div');
+                    deliverables.className = 'deliverables';
+                    
+                    week.deliverables.forEach(del => {
+                        const delDiv = document.createElement('div');
+                        delDiv.className = 'deliverable-item';
+                        delDiv.innerHTML = `<span class="bullet">•</span><span>${del}</span>`;
+                        deliverables.appendChild(delDiv);
+                    });
+                    
+                    weekDiv.appendChild(deliverables);
+                }
+                
+                // Dependency indicator (shown when expanded)
+                if (week.depends_on && isExpanded) {
+                    const dependency = document.createElement('div');
+                    dependency.className = 'dependency';
+                    dependency.innerHTML = `<span>↑</span><span>Depends on Week ${week.depends_on}</span>`;
+                    weekDiv.appendChild(dependency);
+                }
+                
+                container.appendChild(weekDiv);
+            });
+        }
+        
+        // Button handlers
+        document.getElementById('expandAll').onclick = () => {
+            expandedWeeks = new Set(weeks.map(w => w.week));
+            renderGantt();
+        };
+        
+        document.getElementById('collapseAll').onclick = () => {
+            expandedWeeks.clear();
+            renderGantt();
+        };
+        
+        // Initial render
+        renderGantt();
+    </script>
+</body>
+</html>
