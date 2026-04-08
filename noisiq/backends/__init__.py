@@ -1,2 +1,11 @@
-# This file marks the 'backends' directory as a Python package.
-# It will be populated in Week 2.
+"""
+Simulation backends for quantum circuits that have noise models
+"""
+
+from .pauli_frame import ErrorEvent, PauliFrameBackend, PauliFrameResult
+
+__all__ = [
+    "PauliFrameBackend",
+    "PauliFrameResult",
+    "ErrorEvent",
+]
