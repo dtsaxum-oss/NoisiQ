@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Tuple
 
 import numpy as np
 
 
-def _is_unitary(m: np.ndarray, tol: float = 1e-9) -> bool:
+def is_unitary(m: np.ndarray, tol: float = 1e-9) -> bool:
     """
     Check if a matrix is unitary (U†U = I) within a given tolerance.
 
@@ -44,7 +45,7 @@ class Gate:
     num_qubits: int
 
     def __post_init__(self):
-        if not _is_unitary(self.matrix):
+        if not is_unitary(self.matrix):
             raise ValueError(f"Gate '{self.name}' matrix is not unitary.")
 
     def __repr__(self) -> str:
@@ -134,7 +135,7 @@ CZ = Gate(
 # Gate Expansion to Full Hilbert Space
 # ==============================================================================
 
-def _expand_multi_qubit_gate(
+def expand_gate_to_full_space(
     gate: Gate,
     target_qubits: Tuple[int, ...],
     n_qubits: int
