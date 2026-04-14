@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Tuple
 
 import numpy as np
 
 
-def _is_unitary(m: np.ndarray, tol: float = 1e-9) -> bool:
+def is_unitary(m: np.ndarray, tol: float = 1e-9) -> bool:
     """
     Check if a matrix is unitary (U†U = I) within a given tolerance.
 
@@ -44,7 +45,7 @@ class Gate:
     num_qubits: int
 
     def __post_init__(self):
-        if not _is_unitary(self.matrix):
+        if not is_unitary(self.matrix):
             raise ValueError(f"Gate '{self.name}' matrix is not unitary.")
 
     def __repr__(self) -> str:
@@ -115,3 +116,63 @@ CNOT = Gate(
         dtype=complex,
     ),
 )
+
+CZ = Gate(
+    name="CZ",
+    num_qubits=2,
+    matrix=np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, -1],
+        ],
+        dtype=complex,
+    ),
+)
+
+# ==============================================================================
+# Gate Expansion to Full Hilbert Space
+# ==============================================================================
+
+def expand_gate_to_full_space(
+    gate: Gate,
+    target_qubits: Tuple[int, ...],
+    n_qubits: int
+) -> np.ndarray:
+    """
+    Expand an arbitrary multi-qubit gate to full space.
+    
+    Works for any gate size: n-qubit.
+    """
+    num_gate_qubits = gate.num_qubits
+    gate_dim = 2 ** num_gate_qubits  # e.g., 8 for CCZ (3-qubit)
+    full_dim = 2 ** n_qubits
+    
+    result = np.zeros((full_dim, full_dim), dtype=complex)
+    
+    # Iterate over all basis states in the full Hilbert space
+    for in_idx in range(full_dim):
+        # Extract the bits for target qubits
+        gate_in_bits = 0
+        for i, q in enumerate(target_qubits):
+            bit = (in_idx >> (n_qubits - 1 - q)) & 1
+            gate_in_bits |= (bit << (num_gate_qubits - 1 - i))
+        
+        # Apply gate to these bits
+        for gate_out_bits in range(gate_dim):
+            if gate.matrix[gate_out_bits, gate_in_bits] == 0:
+                continue
+            
+            # Construct output index by replacing target qubit bits
+            out_idx = in_idx
+            for i, q in enumerate(target_qubits):
+                # Clear the bit
+                out_idx &= ~(1 << (n_qubits - 1 - q))
+                # Set new bit
+                new_bit = (gate_out_bits >> (num_gate_qubits - 1 - i)) & 1
+                out_idx |= (new_bit << (n_qubits - 1 - q))
+            
+            result[out_idx, in_idx] += gate.matrix[gate_out_bits, gate_in_bits]
+    
+    return result
