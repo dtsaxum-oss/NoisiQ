@@ -1,2 +1,12 @@
-# This file marks the 'visualization' directory as a Python package.
-# It will be populated in Week 3.
+"""
+Visualization tools for NoisiQ.
+"""
+
+from .heatmap import draw_error_heatmap, to_qiskit_circuit
+from .widgets import Visualizer
+
+__all__ = [
+    "draw_error_heatmap",
+    "to_qiskit_circuit",
+    "Visualizer",
+]

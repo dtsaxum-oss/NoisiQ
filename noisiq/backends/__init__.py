@@ -2,10 +2,11 @@
 Simulation backends for quantum circuits that have noise models
 """
 
-from .pauli_frame import ErrorEvent, PauliFrameBackend, PauliFrameResult
+from .pauli_frame import ErrorEvent, StimTableauBackend, StimTableauResult, StepResult
 
 __all__ = [
-    "PauliFrameBackend",
-    "PauliFrameResult",
+    "StimTableauBackend",
+    "StimTableauResult",
+    "StepResult",
     "ErrorEvent",
 ]
