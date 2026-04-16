@@ -2,11 +2,10 @@
 Visualization tools for NoisiQ.
 """
 
-from .heatmap import draw_error_heatmap, to_qiskit_circuit
+from .drawer import draw_circuit_with_labels
 from .widgets import Visualizer
 
 __all__ = [
-    "draw_error_heatmap",
-    "to_qiskit_circuit",
+    "draw_circuit_with_labels",
     "Visualizer",
 ]

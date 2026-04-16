@@ -12,8 +12,11 @@ import matplotlib.pyplot as plt
 
 from ..ir import Circuit
 from ..backends.pauli_frame import StimTableauBackend, StimTableauResult
-from .heatmap import draw_error_heatmap
+from .drawer import draw_circuit_with_labels
+from .pauli_frame_tracker import compute_error_trajectories
 
+
+from matplotlib.animation import FuncAnimation
 
 class Visualizer:
     """
@@ -24,12 +27,12 @@ class Visualizer:
         self.circuit = circuit
         self.backend = StimTableauBackend()
         self.result: Optional[StimTableauResult] = None
-        self._qc_cache = {}
+        self.trajectories = []
         
     def simulate(self, noise_config=None, seed=None):
         """Run simulation and store result."""
         self.result = self.backend.run_single_shot(self.circuit, noise_config, seed)
-        self._qc_cache = {} # Clear cache on new simulation
+        self.trajectories = compute_error_trajectories(self.circuit, self.result)
         return self.result
         
     def show(self):
@@ -53,12 +56,21 @@ class Visualizer:
             step_idx = change['new']
             with output:
                 output.clear_output(wait=True)
-                fig = draw_error_heatmap(
+                
+                fig, ax = plt.subplots(figsize=(10, 0.8 * self.circuit.n_qubits + 1))
+                
+                # Get the frame for this step
+                # Note: step_idx represents the state *after* the operation at step_idx
+                # We can highlight the gate at step_idx
+                frame = self.trajectories[step_idx] if step_idx < len(self.trajectories) else None
+                
+                draw_circuit_with_labels(
+                    ax, 
                     self.circuit, 
-                    self.result, 
-                    step_index=step_idx,
-                    qc_cache=self._qc_cache
+                    pauli_frame=frame, 
+                    highlight_t=step_idx
                 )
+                
                 display(fig)
                 plt.close(fig) # Close to prevent memory leak and hangs
                 
@@ -78,3 +90,26 @@ class Visualizer:
             update_plot({'new': 0})
             
         display(widgets.VBox([step_slider, output]))
+
+    def export_animation(self, filename: str, interval_ms: int = 650):
+        """Export the step-by-step visualization as an animation (GIF or MP4)."""
+        if self.result is None:
+            print("Please run simulate() first.")
+            return
+            
+        fig, ax = plt.subplots(figsize=(10, 0.8 * self.circuit.n_qubits + 1))
+        
+        def update(i):
+            ax.clear()
+            frame = self.trajectories[i] if i < len(self.trajectories) else None
+            draw_circuit_with_labels(
+                ax, 
+                self.circuit, 
+                pauli_frame=frame, 
+                highlight_t=i
+            )
+            
+        anim = FuncAnimation(fig, update, frames=len(self.trajectories), interval=interval_ms, repeat=True)
+        anim.save(filename)
+        plt.close(fig)
+        print(f"Animation saved to {filename}")
