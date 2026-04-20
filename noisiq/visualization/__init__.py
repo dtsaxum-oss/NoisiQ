@@ -1,2 +1,11 @@
-# This file marks the 'visualization' directory as a Python package.
-# It will be populated in Week 3.
+"""
+Visualization tools for NoisiQ.
+"""
+
+from .drawer import draw_circuit_with_labels
+from .widgets import Visualizer
+
+__all__ = [
+    "draw_circuit_with_labels",
+    "Visualizer",
+]

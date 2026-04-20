@@ -82,6 +82,9 @@ dependencies = [
     "numpy>=1.24",
     "matplotlib>=3.7",
     "ipywidgets>=8.0",
+    "stim>=1.13",
+    "qiskit>=1.0",
+    "pylatexenc>=2.10",
 ]
 
 
