@@ -40,55 +40,56 @@ class Visualizer:
         if self.result is None:
             print("Please run simulate() first.")
             return
-            
+
+        # Step through unique layers (op.t values) not individual operations.
+        layers = sorted(set(op.t for op in self.circuit.operations))
+        layer_to_frame = {}
+        for step in self.result.steps:
+            t = step.operation.t
+            idx = step.time_step
+            if idx < len(self.trajectories):
+                layer_to_frame[t] = self.trajectories[idx]
+
         step_slider = widgets.IntSlider(
             value=0,
             min=0,
-            max=len(self.result.steps) - 1,
+            max=len(layers) - 1,
             step=1,
-            description='Step:',
-            continuous_update=False
+            description='Layer:',
+            continuous_update=False,
         )
-        
+
         output = widgets.Output()
-        
+
         def update_plot(change):
-            step_idx = change['new']
+            layer_idx = change['new']
+            t = layers[layer_idx]
+            frame = layer_to_frame.get(t)
             with output:
                 output.clear_output(wait=True)
-                
                 fig, ax = plt.subplots(figsize=(10, 0.8 * self.circuit.n_qubits + 1))
-                
-                # Get the frame for this step
-                # Note: step_idx represents the state *after* the operation at step_idx
-                # We can highlight the gate at step_idx
-                frame = self.trajectories[step_idx] if step_idx < len(self.trajectories) else None
-                
                 draw_circuit_with_labels(
-                    ax, 
-                    self.circuit, 
-                    pauli_frame=frame, 
-                    highlight_t=step_idx
+                    ax, self.circuit, pauli_frame=frame, highlight_t=t,
                 )
-                
                 display(fig)
-                plt.close(fig) # Close to prevent memory leak and hangs
-                
-                # Print errors at this step
-                step = self.result.steps[step_idx]
-                if step.errors:
-                    print(f"Errors at step {step_idx}:")
-                    for err in step.errors:
+                plt.close(fig)
+
+                layer_errors = [
+                    err
+                    for step in self.result.steps
+                    if step.operation.t == t
+                    for err in step.errors
+                ]
+                if layer_errors:
+                    print(f"Errors at t={t}:")
+                    for err in layer_errors:
                         print(f"  - {err.pauli} error on qubit {err.qubit}")
                 else:
-                    print(f"No errors at step {step_idx}")
-        
+                    print(f"No errors at t={t}")
+
         step_slider.observe(update_plot, names='value')
-        
-        # Initial plot
         with output:
             update_plot({'new': 0})
-            
         display(widgets.VBox([step_slider, output]))
 
     def export_animation(self, filename: str, interval_ms: int = 650):

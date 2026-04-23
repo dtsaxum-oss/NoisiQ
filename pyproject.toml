@@ -83,6 +83,7 @@ dependencies = [
     "matplotlib>=3.7",
     "ipywidgets>=8.0",
     "stim>=1.13",
+    "bloqade-tsim>=0.1",
     "qiskit>=1.0",
     "pylatexenc>=2.10",
 ]
@@ -122,8 +123,18 @@ notebook = [
 
 # Circuit framework adapters, look into versions and other common options
 adapters = [
-    # "qiskit>=1.0",        
-    # "cirq>=1.3",          
+    # "qiskit>=1.0",
+    # "cirq>=1.3",
+]
+
+# Optional Aer simulator backend (large install ~100-500MB)
+aer = [
+    "qiskit-aer>=0.14",
+]
+
+# All optional backends in one shot
+full = [
+    "noisiq[aer]",
 ]
 
 

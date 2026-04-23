@@ -204,3 +204,4 @@ Your existing `PauliFrameBackend` becomes one implementation. `StimBackend` and 
 
 > [!IMPORTANT]
 > **Regarding Clifford+T specifically:** For circuits with a small number of T gates in a mostly-Clifford circuit, Stim can handle the Clifford parts while you use Qiskit Aer's `extended_stabilizer` for the T-gate segments. This hybrid approach lets you push to larger qubit counts than pure state-vector simulation while still supporting the full Clifford+T gate set.
+x
