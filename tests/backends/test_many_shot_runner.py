@@ -119,6 +119,7 @@ def test_same_seed_identical_counts():
     r1 = ManyShotRunner().run(circuit, n_shots=200, noise_config=noise_config, seed=42)
     r2 = ManyShotRunner().run(circuit, n_shots=200, noise_config=noise_config, seed=42)
     np.testing.assert_array_equal(r1.counts_matrix, r2.counts_matrix)
+    np.testing.assert_array_equal(r1.zero_error_shots, r2.zero_error_shots)
 
 def test_different_seeds_produce_different_counts():
     noise_config = {0: depolarizing_error(0.3)}
@@ -162,6 +163,47 @@ def test_statistical_convergence_bitflip():
                                   noise_config=noise_config, seed=42)
     measured = result.error_rate_matrix[0, 0]
     assert abs(measured - 0.2) < 0.02, f"Expected ~0.2, got {measured:.4f}"
+
+# ---------------------------------------------------------------------------
+# zero_error_shots and zero_error_fraction
+# ---------------------------------------------------------------------------
+
+def test_zero_error_shots_shape():
+    n_shots = 15
+    result = ManyShotRunner().run(_bell_circuit(), n_shots=n_shots)
+    assert result.zero_error_shots.shape == (n_shots,)
+
+def test_zero_error_shots_dtype_is_bool():
+    result = ManyShotRunner().run(_single_x_circuit(), n_shots=10)
+    assert result.zero_error_shots.dtype == bool
+
+def test_zero_error_shots_all_true_when_no_noise():
+    result = ManyShotRunner().run(_bell_circuit(), n_shots=50)
+    assert result.zero_error_shots.all()
+
+def test_zero_error_shots_all_false_when_deterministic_noise():
+    # p_x=1.0 → every shot has an error
+    noise_config = {0: bit_flip_error(1.0)}
+    result = ManyShotRunner().run(_single_x_circuit(), n_shots=30,
+                                  noise_config=noise_config, seed=0)
+    assert not result.zero_error_shots.any()
+
+def test_zero_error_fraction_no_noise_is_one():
+    result = ManyShotRunner().run(_bell_circuit(), n_shots=50)
+    assert result.zero_error_fraction == 1.0
+
+def test_zero_error_fraction_deterministic_noise_is_zero():
+    noise_config = {0: bit_flip_error(1.0)}
+    result = ManyShotRunner().run(_single_x_circuit(), n_shots=30,
+                                  noise_config=noise_config, seed=0)
+    assert result.zero_error_fraction == 0.0
+
+def test_zero_error_fraction_bounded():
+    noise_config = {0: depolarizing_error(0.5)}
+    result = ManyShotRunner().run(_single_x_circuit(), n_shots=200,
+                                  noise_config=noise_config, seed=7)
+    assert 0.0 <= result.zero_error_fraction <= 1.0
+
 
 def test_statistical_convergence_depolarizing():
     # Depolarizing p=0.3 → each Pauli (X/Y/Z) has p=0.1 → total error rate = 0.3

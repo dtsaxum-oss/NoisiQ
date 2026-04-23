@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import List, Optional, Sequence
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from ...backends.many_shot_runner import AggregateResult
 from ..theme import (
@@ -133,7 +132,7 @@ def plot_fidelity_decay(
 
     for i, curve in enumerate(curves):
         depths = list(range(1, len(curve) + 1))
-        fidelities = [_zero_error_fraction(r) for r in curve]
+        fidelities = [r.zero_error_fraction for r in curve]
         label = labels[i] if labels and i < len(labels) else f"Run {i + 1}"
         color = default_colors[i % len(default_colors)]
         linestyle = default_styles[i % len(default_styles)]
@@ -164,17 +163,3 @@ def plot_fidelity_decay(
 
     fig.tight_layout()
     return fig
-
-
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
-
-def _zero_error_fraction(result: AggregateResult) -> float:
-    """Fraction of shots in which no error occurred anywhere in the circuit."""
-    total_errors_per_shot_estimate = result.counts_matrix.sum()
-    if result.n_shots == 0:
-        return 0.0
-    # Approximate: use Poisson assumption — P(0 errors) ≈ exp(-mean_errors_per_shot)
-    mean_errors = total_errors_per_shot_estimate / result.n_shots
-    return float(np.exp(-mean_errors))

@@ -26,17 +26,26 @@ class AggregateResult:
     counts_matrix shape: (n_qubits, n_timesteps)
     Each entry counts how many times an error occurred on that
     (qubit, operation-index) across all shots.
+
+    zero_error_shots shape: (n_shots,)
+    Boolean array; True means that shot had no error events anywhere.
     """
 
     counts_matrix: np.ndarray
     n_shots: int
     circuit: Circuit
+    zero_error_shots: np.ndarray
     seed: Optional[int] = None
 
     @property
     def error_rate_matrix(self) -> np.ndarray:
         """Per-(qubit, timestep) error rate: counts / n_shots."""
         return self.counts_matrix / self.n_shots
+
+    @property
+    def zero_error_fraction(self) -> float:
+        """Exact fraction of shots in which no error occurred."""
+        return float(self.zero_error_shots.mean())
 
     @property
     def n_qubits(self) -> int:
@@ -88,11 +97,12 @@ class ManyShotRunner:
         n_qubits = circuit.n_qubits
         n_ops = len(circuit.operations)
         counts = np.zeros((n_qubits, n_ops), dtype=np.int64)
+        zero_error = np.ones(n_shots, dtype=bool)
 
         rng = np.random.default_rng(seed)
         shot_seeds = rng.integers(0, 2**31, size=n_shots)
 
-        for shot_seed in shot_seeds:
+        for i, shot_seed in enumerate(shot_seeds):
             result = self._backend.run_single_shot(
                 circuit,
                 noise_config=noise_config,
@@ -101,10 +111,12 @@ class ManyShotRunner:
             for step in result.steps:
                 for error in step.errors:
                     counts[error.qubit, error.time_step] += 1
+                    zero_error[i] = False
 
         return AggregateResult(
             counts_matrix=counts,
             n_shots=n_shots,
             circuit=circuit,
+            zero_error_shots=zero_error,
             seed=seed,
         )

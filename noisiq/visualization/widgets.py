@@ -43,6 +43,19 @@ class Visualizer:
 
         # Step through unique layers (op.t values) not individual operations.
         layers = sorted(set(op.t for op in self.circuit.operations))
+
+        output = widgets.Output()
+
+        if not layers:
+            with output:
+                fig, ax = plt.subplots(figsize=(10, 0.8 * self.circuit.n_qubits + 1))
+                draw_circuit_with_labels(ax, self.circuit, pauli_frame=None, highlight_t=0)
+                display(fig)
+                plt.close(fig)
+                print("Empty circuit — no operations to step through.")
+            display(output)
+            return
+
         layer_to_frame = {}
         for step in self.result.steps:
             t = step.operation.t
@@ -58,8 +71,6 @@ class Visualizer:
             description='Layer:',
             continuous_update=False,
         )
-
-        output = widgets.Output()
 
         def update_plot(change):
             layer_idx = change['new']

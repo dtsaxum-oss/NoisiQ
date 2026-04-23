@@ -19,6 +19,7 @@ def _make_result(counts: np.ndarray, circuit: Circuit, n_shots: int = 100) -> Ag
         counts_matrix=counts,
         n_shots=n_shots,
         circuit=circuit,
+        zero_error_shots=np.ones(n_shots, dtype=bool),
         seed=None,
     )
 
