@@ -45,17 +45,24 @@ class Circuit:
     name: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
-    def add_gate(self, gate: gates.Gate, qubits: Qubits | List[int]):
+    def add_gate(self, gate: gates.Gate, qubits: Qubits | List[int], t: Optional[int] = None):
         """
         Adds a gate operation to the circuit.
 
         Args:
-            gate: The gate to add (e.g., gates.H).
+            gate:   The gate to add (e.g., gates.H).
             qubits: The qubit(s) the gate acts on.
+            t:      Optional explicit time step (layer index).  When omitted,
+                    the gate is auto-scheduled into the earliest available slot
+                    where none of its qubits conflict with an existing operation.
+                    When provided, the gate is placed at exactly that t — but
+                    a ValueError is raised if any qubit is already occupied at
+                    that t by another gate.
 
         Raises:
             ValueError: If the number of qubits provided does not match the
-                        gate's definition or if any qubit index is out of bounds.
+                        gate's definition, if any qubit index is out of bounds,
+                        or if any qubit is already in use at the requested t.
         """
         if isinstance(qubits, list):
             qubits = tuple(qubits)
@@ -73,11 +80,67 @@ class Circuit:
                     f"{self.n_qubits} qubits."
                 )
 
-        # For now, we assume each gate is one time step.
-        # TODO: Add support for gates with different durations and parallel operations.
-        t = len(self.operations)
+        if t is None:
+            # Greedy scheduling: earliest slot where all required qubits are free.
+            qubit_last_t: Dict[int, int] = {}
+            for op in self.operations:
+                for q in op.qubits:
+                    if op.t > qubit_last_t.get(q, -1):
+                        qubit_last_t[q] = op.t
+            t = max((qubit_last_t.get(q, -1) for q in qubits), default=-1) + 1
+
+        # Qubit-collision check: no two gates at the same t may share a qubit.
+        new_qubits = set(qubits)
+        for existing in self.operations:
+            if existing.t == t:
+                conflict = new_qubits & set(existing.qubits)
+                if conflict:
+                    raise ValueError(
+                        f"Cannot place '{gate.name}' on qubit(s) {sorted(qubits)} at t={t}: "
+                        f"qubit(s) {sorted(conflict)} already used by "
+                        f"'{existing.gate.name}' on {list(existing.qubits)} at t={t}."
+                    )
+
         op = Operation(gate=gate, qubits=qubits, t=t)
         self.operations.append(op)
+        return self
+
+    # ------------------------------------------------------------------
+    # Fluent builder methods — each returns self for chaining, e.g.:
+    #   Circuit(3).h(0).cnot(0, 1).cnot(1, 2)
+    # Single-qubit gates accept an optional t= to pin the layer.
+    # ------------------------------------------------------------------
+
+    def h(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.H, (qubit,), t=t)
+
+    def x(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.X, (qubit,), t=t)
+
+    def y(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.Y, (qubit,), t=t)
+
+    def z(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.Z, (qubit,), t=t)
+
+    def s(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.S, (qubit,), t=t)
+
+    def tgate(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        """T gate — named tgate to avoid collision with the t= layer parameter."""
+        return self.add_gate(gates.T, (qubit,), t=t)
+
+    def identity(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.I, (qubit,), t=t)
+
+    def cnot(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.CNOT, (control, target), t=t)
+
+    def cx(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.CNOT, (control, target), t=t)
+
+    def cz(self, q1: int, q2: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.CZ, (q1, q2), t=t)
 
     ## Removes name and metadata from printing if they're None, to reduce clutter
     def __repr__(self) -> str:
