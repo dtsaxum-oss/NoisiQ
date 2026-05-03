@@ -13,6 +13,15 @@ import matplotlib.pyplot as plt
 
 from ...backends.many_shot_runner import AggregateResult
 from ..theme import (
+    CHART_BAR_EDGE_WIDTH,
+    CHART_BAR_HEIGHT,
+    CHART_GRID_ALPHA,
+    CHART_LINE_STYLES,
+    CHART_LINE_WIDTH,
+    CHART_MARKER_SIZE,
+    CHART_SECONDARY_COLORS,
+    CHART_TITLE_FONT_SIZE,
+    CHART_VALUE_LABEL_FONT_SIZE,
     CLIFFORD_GATE_COLOR,
     ERROR_COLOR,
     QUBIT_LABEL_FONT_SIZE,
@@ -58,8 +67,8 @@ def plot_qubit_error_bar(
         qubit_rates,
         color=colors,
         edgecolor=WIRE_COLOR,
-        linewidth=0.8,
-        height=0.55,
+        linewidth=CHART_BAR_EDGE_WIDTH,
+        height=CHART_BAR_HEIGHT,
     )
 
     # Value labels on bars
@@ -70,7 +79,7 @@ def plot_qubit_error_bar(
                 bar.get_y() + bar.get_height() / 2,
                 f"{rate:.3f}",
                 va="center", ha="left",
-                fontsize=9, color=WIRE_COLOR,
+                fontsize=CHART_VALUE_LABEL_FONT_SIZE, color=WIRE_COLOR,
             )
 
     ax.set_xlabel("Error rate  (errors / shot)", fontsize=10)
@@ -78,12 +87,12 @@ def plot_qubit_error_bar(
     ax.invert_yaxis()
     ax.set_frame_on(False)
     ax.tick_params(axis="y", labelsize=QUBIT_LABEL_FONT_SIZE)
-    ax.xaxis.grid(True, linestyle="--", alpha=0.4)
+    ax.xaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
     ax.set_axisbelow(True)
 
     ax.set_title(
         title or f"Per-qubit error rate — {result.n_shots} shots",
-        fontsize=11, pad=8,
+        fontsize=CHART_TITLE_FONT_SIZE, pad=8,
     )
 
     fig.tight_layout()
@@ -127,8 +136,8 @@ def plot_fidelity_decay(
     else:
         curves = list(depth_results)
 
-    default_colors = [CLIFFORD_GATE_COLOR, ERROR_COLOR, "#4CAF50", "#FF9800", "#9C27B0"]
-    default_styles = ["-", "--", "-.", ":", "-"]
+    default_colors = [CLIFFORD_GATE_COLOR, ERROR_COLOR] + CHART_SECONDARY_COLORS
+    default_styles = CHART_LINE_STYLES
 
     for i, curve in enumerate(curves):
         depths = list(range(1, len(curve) + 1))
@@ -141,9 +150,9 @@ def plot_fidelity_decay(
             depths, fidelities,
             color=color,
             linestyle=linestyle,
-            linewidth=2,
+            linewidth=CHART_LINE_WIDTH,
             marker="o",
-            markersize=4,
+            markersize=CHART_MARKER_SIZE,
             label=label,
         )
 
@@ -151,15 +160,15 @@ def plot_fidelity_decay(
     ax.set_ylabel("Fidelity estimate\n(zero-error shot fraction)", fontsize=10)
     ax.set_ylim(-0.05, 1.05)
     ax.set_xlim(0.5, max(len(c) for c in curves) + 0.5)
-    ax.xaxis.grid(True, linestyle="--", alpha=0.3)
-    ax.yaxis.grid(True, linestyle="--", alpha=0.3)
+    ax.xaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
+    ax.yaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
     ax.set_axisbelow(True)
     ax.set_frame_on(False)
 
     if len(curves) > 1 or labels:
-        ax.legend(fontsize=9, frameon=False)
+        ax.legend(fontsize=CHART_VALUE_LABEL_FONT_SIZE, frameon=False)
 
-    ax.set_title(title or "Fidelity decay vs. circuit depth", fontsize=11, pad=8)
+    ax.set_title(title or "Fidelity decay vs. circuit depth", fontsize=CHART_TITLE_FONT_SIZE, pad=8)
 
     fig.tight_layout()
     return fig

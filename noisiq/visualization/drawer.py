@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
-from typing import Optional, List
+from typing import Optional
 from ..ir import Circuit
 from .pauli_frame_tracker import PauliFrame
 from .theme import (
@@ -8,21 +8,25 @@ from .theme import (
     WIRE_COLOR,
     WIRE_LINEWIDTH,
     GATE_HALF_W,
-    GATE_HALF_H,
     GATE_SIZE,
     GATE_EDGE_COLOR,
     GATE_EDGE_WIDTH,
-    GATE_LABEL_COLOR,
-    GATE_LABEL_FONT_SIZE,
     QUBIT_LABEL_COLOR,
     QUBIT_LABEL_FONT_SIZE,
     ERROR_COLOR,
-    TARGET_CIRCLE_RADIUS,
-    CONTROL_DOT_SIZE,
+    ERROR_LABEL_FONT_SIZE,
+    PAULI_ERROR_BG_COLOR,
+    PAULI_ERROR_BOX_PAD,
+    PAULI_ERROR_LINEWIDTH,
+    PAULI_ERROR_X_OFFSET,
+    PAULI_ERROR_Y_OFFSET,
     ACTIVE_COLUMN_COLOR,
+    ACTIVE_COLUMN_PAD_X,
+    ACTIVE_COLUMN_PAD_Y,
+    draw_single_gate,
+    draw_cnot,
+    draw_cz,
 )
-
-_COLUMN_PAD: float = 0.1   # extra space beyond gate edges inside the column highlight
 
 
 def draw_circuit_with_labels(
@@ -58,30 +62,22 @@ def draw_circuit_with_labels(
 
         if name in ("CNOT", "CX"):
             q_ctrl, q_tgt = op.qubits
-            y_ctrl = n_qubits - 1 - q_ctrl
-            y_tgt = n_qubits - 1 - q_tgt
-            _draw_cnot(ax, x, y_ctrl, y_tgt, fill, edge, lw)
-
+            draw_cnot(ax, x, n_qubits - 1 - q_ctrl, n_qubits - 1 - q_tgt, fill, lw)
         elif name == "CZ":
             q1, q2 = op.qubits
-            y1 = n_qubits - 1 - q1
-            y2 = n_qubits - 1 - q2
-            _draw_cz(ax, x, y1, y2, fill, edge, lw)
-
+            draw_cz(ax, x, n_qubits - 1 - q1, n_qubits - 1 - q2, fill, lw)
         elif name == "I":
             pass
-
         else:
             (q,) = op.qubits
-            y = n_qubits - 1 - q
-            _draw_single_qubit_gate(ax, x, y, name, fill, edge, lw)
+            draw_single_gate(ax, x, n_qubits - 1 - q, name, fill, edge, lw)
 
-    # Active column highlight — drawn before gates so it sits behind them
+    # Active column highlight
     if highlight_t is not None:
-        col_x = highlight_t - GATE_HALF_W - _COLUMN_PAD
-        col_y = -_COLUMN_PAD
-        col_w = GATE_SIZE + 2 * _COLUMN_PAD
-        col_h = (n_qubits - 1) + 2 * _COLUMN_PAD
+        col_x = highlight_t - GATE_HALF_W - ACTIVE_COLUMN_PAD_X
+        col_y = -ACTIVE_COLUMN_PAD_Y
+        col_w = GATE_SIZE + 2 * ACTIVE_COLUMN_PAD_X
+        col_h = (n_qubits - 1) + 2 * ACTIVE_COLUMN_PAD_Y
         col_box = FancyBboxPatch(
             (col_x, col_y), col_w, col_h,
             boxstyle="round,pad=0.05",
@@ -91,7 +87,7 @@ def draw_circuit_with_labels(
         )
         ax.add_patch(col_box)
 
-    # Qubit labels and Pauli error labels on wires
+    # Qubit labels and Pauli error labels
     pauli_string = pauli_frame.get_pauli_string() if pauli_frame else "I" * n_qubits
     for q in range(n_qubits):
         y = n_qubits - 1 - q
@@ -102,16 +98,15 @@ def draw_circuit_with_labels(
         )
         p_label = pauli_string[q]
         if p_label != "I" and highlight_t is not None:
-            x_err = highlight_t + 0.55
             ax.text(
-                x_err, y, p_label,
+                float(highlight_t) + PAULI_ERROR_X_OFFSET, y + PAULI_ERROR_Y_OFFSET, p_label,
                 va="center", ha="center",
-                fontsize=10, color=ERROR_COLOR, fontweight="bold",
+                fontsize=ERROR_LABEL_FONT_SIZE, color=ERROR_COLOR, fontweight="bold",
                 bbox=dict(
-                    boxstyle="circle,pad=0.15",
-                    facecolor="#FFECEC",
+                    boxstyle=f"circle,pad={PAULI_ERROR_BOX_PAD}",
+                    facecolor=PAULI_ERROR_BG_COLOR,
                     edgecolor=ERROR_COLOR,
-                    linewidth=1,
+                    linewidth=PAULI_ERROR_LINEWIDTH,
                 ),
                 zorder=5,
             )
@@ -124,42 +119,3 @@ def draw_circuit_with_labels(
     ax.set_xticks(range(n_layers))
     ax.set_yticks([])
     ax.set_frame_on(False)
-
-
-# ---------------------------------------------------------------------------
-# Private helpers
-# ---------------------------------------------------------------------------
-
-def _draw_single_qubit_gate(ax, x, y, name, fill, edge, lw):
-    box = FancyBboxPatch(
-        (x - GATE_HALF_W, y - GATE_HALF_H),
-        GATE_HALF_W * 2, GATE_HALF_H * 2,
-        boxstyle="round,pad=0.02",
-        facecolor=fill, edgecolor=edge, linewidth=lw, zorder=3,
-    )
-    ax.add_patch(box)
-    ax.text(
-        x, y, name,
-        ha="center", va="center",
-        fontsize=GATE_LABEL_FONT_SIZE, color=GATE_LABEL_COLOR,
-        fontweight="bold", zorder=4,
-    )
-
-
-def _draw_cnot(ax, x, y_ctrl, y_tgt, fill, edge, lw):
-    ax.plot([x, x], [y_ctrl, y_tgt], linewidth=lw, color=fill, zorder=2)
-    ax.scatter([x], [y_ctrl], s=CONTROL_DOT_SIZE, c=fill, zorder=4)
-    circle = plt.Circle(
-        (x, y_tgt), TARGET_CIRCLE_RADIUS,
-        fill=True, facecolor="white", edgecolor=fill, linewidth=lw, zorder=3,
-    )
-    ax.add_patch(circle)
-    ax.plot([x, x], [y_tgt - TARGET_CIRCLE_RADIUS, y_tgt + TARGET_CIRCLE_RADIUS],
-            linewidth=lw, color=fill, zorder=4)
-    ax.plot([x - TARGET_CIRCLE_RADIUS, x + TARGET_CIRCLE_RADIUS], [y_tgt, y_tgt],
-            linewidth=lw, color=fill, zorder=4)
-
-
-def _draw_cz(ax, x, y1, y2, fill, edge, lw):
-    ax.plot([x, x], [y1, y2], linewidth=lw, color=fill, zorder=2)
-    ax.scatter([x, x], [y1, y2], s=CONTROL_DOT_SIZE, c=fill, zorder=4)
