@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
+
 
 class GateInfoExtractor:
     """Stateless extractor — call for_gate() as a class method."""
@@ -85,7 +87,7 @@ class GateInfoExtractor:
         )
 
         total_error_rate = float(rates_col.sum())
-        fidelity = max(0.0, 1.0 - total_error_rate)
+        fidelity = float(np.prod(1.0 - rates_col))
 
         return {
             "mode": "many_shot",

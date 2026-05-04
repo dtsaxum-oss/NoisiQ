@@ -125,6 +125,9 @@ def plot_fidelity_decay(
     -------
     The matplotlib Figure.
     """
+    if not depth_results:
+        raise ValueError("depth_results must not be empty")
+
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
