@@ -119,3 +119,42 @@ def draw_circuit_with_labels(
     ax.set_xticks(range(n_layers))
     ax.set_yticks([])
     ax.set_frame_on(False)
+
+
+# ---------------------------------------------------------------------------
+# Private helpers
+# ---------------------------------------------------------------------------
+
+def _draw_single_qubit_gate(ax, x, y, name, fill, edge, lw):
+    box = FancyBboxPatch(
+        (x - GATE_HALF_W, y - GATE_HALF_H),
+        GATE_HALF_W * 2, GATE_HALF_H * 2,
+        boxstyle="round,pad=0.02",
+        facecolor=fill, edgecolor=edge, linewidth=lw, zorder=3,
+    )
+    ax.add_patch(box)
+    ax.text(
+        x, y, name,
+        ha="center", va="center",
+        fontsize=GATE_LABEL_FONT_SIZE, color=GATE_LABEL_COLOR,
+        fontweight="bold", zorder=4,
+    )
+
+
+def _draw_cnot(ax, x, y_ctrl, y_tgt, fill, edge, lw):
+    ax.plot([x, x], [y_ctrl, y_tgt], linewidth=lw, color=fill, zorder=2)
+    ax.scatter([x], [y_ctrl], s=CONTROL_DOT_SIZE, c=fill, zorder=4)
+    circle = plt.Circle(
+        (x, y_tgt), TARGET_CIRCLE_RADIUS,
+        fill=True, facecolor="white", edgecolor=fill, linewidth=lw, zorder=3,
+    )
+    ax.add_patch(circle)
+    ax.plot([x, x], [y_tgt - TARGET_CIRCLE_RADIUS, y_tgt + TARGET_CIRCLE_RADIUS],
+            linewidth=lw, color=fill, zorder=4)
+    ax.plot([x - TARGET_CIRCLE_RADIUS, x + TARGET_CIRCLE_RADIUS], [y_tgt, y_tgt],
+            linewidth=lw, color=fill, zorder=4)
+
+
+def _draw_cz(ax, x, y1, y2, fill, edge, lw):
+    ax.plot([x, x], [y1, y2], linewidth=lw, color=fill, zorder=2)
+    ax.scatter([x, x], [y1, y2], s=CONTROL_DOT_SIZE, c=fill, zorder=4)

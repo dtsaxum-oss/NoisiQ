@@ -45,7 +45,7 @@ class Circuit:
     name: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
-    def add_gate(self, gate: gates.Gate, qubits: Qubits | List[int], t: Optional[int] = None) -> "Circuit":
+    def add_gate(self, gate: gates.Gate, qubits: Qubits | List[int], t: Optional[int] = None):
         """
         Adds a gate operation to the circuit.
 
