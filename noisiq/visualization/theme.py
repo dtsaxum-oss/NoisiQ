@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
+from matplotlib.patches import FancyBboxPatch
 import numpy as np
 
 # ---------------------------------------------------------------------------
@@ -41,6 +42,8 @@ OTHER_GATE_COLOR: str = "#1F4E79"
 
 # Active T column animation color
 ACTIVE_COLUMN_COLOR: str = "#51FD7170"
+ACTIVE_COLUMN_PAD_X: float = 0.10
+ACTIVE_COLUMN_PAD_Y: float = 0.25
 
 # Gate box border
 GATE_EDGE_COLOR: str = "#1A1A2E"
@@ -58,11 +61,22 @@ QUBIT_LABEL_FONT_SIZE: int = 12
 
 # Pauli error labels (float on the wire between gates)
 ERROR_COLOR: str = "#E53935"
-ERROR_LABEL_FONT_SIZE: int = 8       # small enough to fit between qubit lines
+ERROR_LABEL_FONT_SIZE: int = 10      # font size for Pauli error labels on wires
 ERROR_LABEL_ALPHA: float = 1.0
+
+# Pauli error label badge (the circled letter that rides the wire)
+PAULI_ERROR_BG_COLOR: str = "#FFCEFE"   # light pink fill inside the circle badge
+PAULI_ERROR_BOX_PAD: float = 0.15       # padding inside the circle boxstyle
+PAULI_ERROR_LINEWIDTH: float = 1.0      # edge linewidth of the circle badge
+PAULI_ERROR_X_OFFSET: float = 0.4     # rightward shift from gate center so badge clears the gate box
+PAULI_ERROR_Y_OFFSET: float = 0.2     # vertical offset from the wire (0 = centered on wire)
 
 # Identity / no-error label
 NO_ERROR_COLOR: str = "#AAAAAA"
+
+# Timestep index labels (t0, t1, … shown above gate columns)
+TIMESTEP_LABEL_COLOR: str = "#888888"
+TIMESTEP_LABEL_FONT_SIZE: int = 8
 
 # ---------------------------------------------------------------------------
 # Halo palette  (error-rate proxy now; downstream impact in Week 7)
@@ -79,7 +93,7 @@ _HALO_COLORMAP = mcolors.LinearSegmentedColormap.from_list(
 )
 
 HALO_ALPHA: float = 0.55            # transparency of the halo patch
-HALO_PAD: float = 0.05              # extra padding around gate box for halo
+HALO_PAD: float = 0.55              # extra padding around gate box for halo
 
 # ---------------------------------------------------------------------------
 # Gate geometry
@@ -91,13 +105,29 @@ GATE_HEIGHT: float = GATE_SIZE
 GATE_HALF_W: float = GATE_SIZE / 2
 GATE_HALF_H: float = GATE_SIZE / 2
 CONTROL_DOT_SIZE: float = 70.0       # scatter s= value
-TARGET_CIRCLE_RADIUS: float = GATE_SIZE / 6   # ⊕ circle same width as a gate box
+TARGET_CIRCLE_RADIUS: float = GATE_SIZE / 5   # ⊕ circle same width as a gate box
 
 # ---------------------------------------------------------------------------
 # Font family
 # ---------------------------------------------------------------------------
 
 FONT_FAMILY: str = "sans-serif"
+
+# ---------------------------------------------------------------------------
+# Chart styling  (used by charts/charts.py)
+# ---------------------------------------------------------------------------
+
+CHART_TITLE_FONT_SIZE: int = 11
+CHART_VALUE_LABEL_FONT_SIZE: int = 9
+CHART_GRID_ALPHA: float = 0.3
+CHART_BAR_HEIGHT: float = 0.55
+CHART_BAR_EDGE_WIDTH: float = 0.8
+CHART_LINE_WIDTH: float = 2.0
+CHART_MARKER_SIZE: float = 4.0
+
+# Secondary color palette for multi-curve fidelity charts
+CHART_SECONDARY_COLORS: list = ["#4CAF50", "#FF9800", "#9C27B0"]
+CHART_LINE_STYLES: list = ["-", "--", "-.", ":", "-"]
 
 
 # ---------------------------------------------------------------------------
@@ -146,3 +176,64 @@ def apply_global_style() -> None:
             "figure.dpi": 100,
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Gate drawing primitives  (shared by drawer.py and circuit_diagram.py)
+# ---------------------------------------------------------------------------
+
+def draw_single_gate(
+    ax: plt.Axes,
+    x: float,
+    y: float,
+    name: str,
+    fill: str,
+    edge: str,
+    lw: float,
+) -> None:
+    """Draw a single-qubit rounded gate box with a centered label."""
+    box = FancyBboxPatch(
+        (x - GATE_HALF_W, y - GATE_HALF_H),
+        GATE_SIZE, GATE_SIZE,
+        boxstyle="round,pad=0.03",
+        facecolor=fill, edgecolor=edge, linewidth=lw, zorder=3,
+    )
+    ax.add_patch(box)
+    ax.text(
+        x, y, name,
+        ha="center", va="center",
+        fontsize=GATE_LABEL_FONT_SIZE, color=GATE_LABEL_COLOR,
+        fontweight="bold", fontfamily=FONT_FAMILY, zorder=4,
+    )
+
+
+def draw_cnot(
+    ax: plt.Axes,
+    x: float,
+    y_ctrl: float,
+    y_tgt: float,
+    fill: str,
+    lw: float,
+) -> None:
+    """Draw a CNOT gate — filled dot on control, ⊕ symbol on target."""
+    ax.plot([x, x], [y_ctrl, y_tgt], linewidth=lw, color=fill, zorder=2)
+    ax.scatter([x], [y_ctrl], s=CONTROL_DOT_SIZE, c=fill, zorder=4)
+    ax.text(
+        x, y_tgt, "⊕",
+        ha="center", va="center_baseline",
+        fontsize=16, color=fill,
+        fontweight="bold", zorder=4,
+    )
+
+
+def draw_cz(
+    ax: plt.Axes,
+    x: float,
+    y1: float,
+    y2: float,
+    fill: str,
+    lw: float,
+) -> None:
+    """Draw a CZ gate — filled dots on both qubits connected by a line."""
+    ax.plot([x, x], [y1, y2], linewidth=lw, color=fill, zorder=2)
+    ax.scatter([x, x], [y1, y2], s=CONTROL_DOT_SIZE, c=fill, zorder=4)
