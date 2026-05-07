@@ -1,11 +1,11 @@
 from typing import Dict, Union, Any
 
-from ..ir import Circuit
-from ..noise.kraus_channels import KrausChannel
-from ..noise import PauliError
-from .pauli_frame import StimTableauBackend
-from .tsim_backend import TsimBackend
-from .trajectory_backend import TrajectoryBackend
+from noisiq.ir import Circuit
+from noisiq.noise import PauliError
+from noisiq.noise.kraus_channels import KrausChannel
+from noisiq.backends.pauli_frame import StimTableauBackend
+from noisiq.backends.tsim_backend import TsimBackend
+from noisiq.backends.trajectory_backend import TrajectoryBackend
 
 class BackendSelector:
     """

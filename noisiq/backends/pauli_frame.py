@@ -10,10 +10,10 @@ from typing import Dict, List, Optional, Any, Union
 import numpy as np
 import stim
 
-from ..ir import Circuit, Operation
-from ..noise import PauliError
-from ..noise.kraus_channels import KrausChannel
-from ..results import SimulationResult
+from noisiq.ir import Circuit, Operation
+from noisiq.noise import PauliError
+from noisiq.noise.kraus_channels import KrausChannel
+from noisiq.results import SimulationResult
 
 
 class NonCliffordError(Exception):

@@ -2,10 +2,10 @@ import numpy as np
 from typing import Dict, List, Optional, Union
 import functools
 
-from ..ir import Circuit, Operation
-from ..noise.kraus_channels import KrausChannel
-from ..noise import PauliError
-from ..results import SimulationResult
+from noisiq.ir import Circuit, Operation
+from noisiq.noise import PauliError
+from noisiq.noise.kraus_channels import KrausChannel
+from noisiq.results import SimulationResult
 
 class TrajectoryBackend:
     """

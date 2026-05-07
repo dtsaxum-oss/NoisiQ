@@ -1,8 +1,8 @@
 from typing import Protocol, Optional, Union, Dict
-from ..ir import Circuit
-from ..noise import PauliError
-from ..noise.kraus_channels import KrausChannel
-from ..results import SimulationResult
+from noisiq.ir import Circuit
+from noisiq.noise import PauliError
+from noisiq.noise.kraus_channels import KrausChannel
+from noisiq.results import SimulationResult
 
 class Backend(Protocol):
     """

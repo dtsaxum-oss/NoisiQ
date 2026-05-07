@@ -2,9 +2,9 @@ import numpy as np
 from typing import Dict, Optional, List, Union
 import tsim
 
-from ..ir import Circuit
-from ..noise import PauliError
-from ..noise.kraus_channels import KrausChannel
+from noisiq.ir import Circuit
+from noisiq.noise import PauliError
+from noisiq.noise.kraus_channels import KrausChannel
 from .pauli_frame import StimTableauResult
 
 class TsimBackend:
@@ -56,7 +56,7 @@ class TsimBackend:
         # Note: bloqade-tsim is a sampler based on ZX-calculus stabilizer rank decomposition.
         # It does not natively support extraction of the full state vector. For step-by-step
         # visualization of the state vector, TrajectoryBackend should be used as a fallback.
-        from ..results import SimulationResult
+        from noisiq.results import SimulationResult
         
         counts = {}
         for sample in samples:

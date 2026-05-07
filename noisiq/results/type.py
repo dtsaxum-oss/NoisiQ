@@ -29,6 +29,23 @@ class SimulationResult:
     counts: Optional[Counts] = None
     meta: Optional[Dict[str, Any]] = None
 
+    def excited_state_probability(self, qubit: int) -> float:
+        """
+        Calculate the probability of measuring the given qubit in the excited state (|1>).
+        """
+        if self.counts is None:
+            raise ValueError("Cannot calculate probability without measurement counts.")
+        
+        total_shots = sum(self.counts.values())
+        if total_shots == 0:
+            return 0.0
+            
+        excited_shots = sum(
+            count for bitstring, count in self.counts.items()
+            if len(bitstring) > qubit and bitstring[qubit] == '1'
+        )
+        return excited_shots / total_shots
+
     def __repr__(self) -> str:
         parts = []
         if self.final_state is not None:
