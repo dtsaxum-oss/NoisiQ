@@ -5,6 +5,7 @@ import tsim
 from noisiq.ir import Circuit
 from noisiq.noise import PauliError
 from noisiq.noise.kraus_channels import KrausChannel
+from noisiq.noise.pauli_channels import PauliChannel
 from .pauli_frame import StimTableauResult
 
 class TsimBackend:
@@ -84,6 +85,8 @@ class TsimBackend:
                 noise_model = noise_config[op_idx]
                 if isinstance(noise_model, KrausChannel):
                     raise TypeError("TsimBackend does not support non-Pauli noise models (e.g., KrausChannel).")
+                if isinstance(noise_model, PauliChannel):
+                    noise_model = noise_model.to_pauli_error()
                 for qubit in op.qubits:
                     p_x = noise_model.p_x
                     p_y = noise_model.p_y
