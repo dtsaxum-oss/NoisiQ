@@ -109,22 +109,24 @@ class TrajectoryBackend:
             probabilities.append(p_k.real)
             new_states.append(psi_k)
             
-        # Sample index
-        probabilities = np.array(probabilities)
-        probabilities = np.clip(probabilities, 0, 1)
+        # Preserve the raw branch probabilities for renormalization
+        raw_probabilities = np.array(probabilities)
+        
+        # Use a normalized/clipped copy only for sampling
+        sampling_probabilities = np.clip(raw_probabilities, 0, 1)
         # Normalize in case of tiny floating point issues
-        sum_p = np.sum(probabilities)
+        sum_p = np.sum(sampling_probabilities)
         if sum_p > 0:
-            probabilities /= sum_p
+            sampling_probabilities /= sum_p
         else:
             # Fallback if probability is 0 (shouldn't happen with trace-preserving operations on valid states)
             return psi
             
-        idx = rng.choice(len(operators), p=probabilities)
+        idx = rng.choice(len(operators), p=sampling_probabilities)
         
-        # Renormalize chosen state
-        if probabilities[idx] > 0:
-            return new_states[idx] / np.sqrt(probabilities[idx])
+        # Renormalize chosen state using the original branch probability
+        if raw_probabilities[idx] > 0:
+            return new_states[idx] / np.sqrt(raw_probabilities[idx])
         return new_states[idx]
 
     def _apply_matrix_to_qubits(self, state: np.ndarray, matrix: np.ndarray, qubits: tuple, n: int) -> np.ndarray:
