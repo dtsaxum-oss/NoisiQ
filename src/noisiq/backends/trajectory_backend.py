@@ -46,7 +46,12 @@ class TrajectoryBackend:
         n = circuit.n_qubits
         dim = 2**n
         
-        rho = np.zeros((dim, dim), dtype=np.complex128)
+        # Only accumulate density matrix if requested or n <= 10
+        # (10 qubits = 1024x1024 complex128 matrix = 16MB)
+        # (15 qubits = 32768x32768 complex128 matrix = 16GB)
+        accumulate_rho = n <= 10
+        
+        rho = np.zeros((dim, dim), dtype=np.complex128) if accumulate_rho else None
         counts = {}
         
         for _ in range(n_shots):
@@ -72,7 +77,8 @@ class TrajectoryBackend:
                                 psi = self._apply_gate(psi, op_pauli, n)
 
             # Accumulate density matrix
-            rho += np.outer(psi, psi.conj())
+            if accumulate_rho:
+                rho += np.outer(psi, psi.conj())
             
             # Sample measurement
             # Calculate probabilities of each computational basis state
@@ -86,7 +92,8 @@ class TrajectoryBackend:
             bitstring = format(measured_idx, f'0{n}b')
             counts[bitstring] = counts.get(bitstring, 0) + 1
             
-        rho /= n_shots
+        if accumulate_rho:
+            rho /= n_shots
         
         return SimulationResult(final_state=rho, counts=counts)
 
@@ -124,7 +131,7 @@ class TrajectoryBackend:
             
         idx = rng.choice(len(operators), p=sampling_probabilities)
         
-        # Renormalize chosen state using the original branch probability
+        # Renormalize chosen state using the original unnormalized branch probability
         if raw_probabilities[idx] > 0:
             return new_states[idx] / np.sqrt(raw_probabilities[idx])
         return new_states[idx]

@@ -189,7 +189,9 @@ class StimTableauBackend:
             sim.z(*op.qubits)
         elif name == 'S':
             sim.s(*op.qubits)
-        elif name == 'CNOT':
+        elif name == 'S_DAG':
+            sim.s_dag(*op.qubits)
+        elif name in ('CNOT', 'CX'):
             sim.cnot(*op.qubits)
         elif name == 'CZ':
             sim.cz(*op.qubits)

@@ -3,6 +3,7 @@ from typing import Dict, Union, Any
 from noisiq.ir import Circuit
 from noisiq.noise import PauliError
 from noisiq.noise.kraus_channels import KrausChannel
+from noisiq.backends.base import Backend
 from noisiq.backends.pauli_frame import StimTableauBackend
 from noisiq.backends.tsim_backend import TsimBackend
 from noisiq.backends.trajectory_backend import TrajectoryBackend
@@ -16,7 +17,7 @@ class BackendSelector:
     def select(
         circuit: Circuit,
         noise_model: Union[KrausChannel, PauliError, Dict[int, Union[KrausChannel, PauliError]]] = None,
-    ) -> Any:
+    ) -> Backend:
         """
         Analyzes the circuit and noise model to determine the best backend.
         """

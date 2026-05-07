@@ -2,7 +2,7 @@ import pytest
 import stim
 import numpy as np
 from noisiq.ir import Circuit, gates
-from noisiq.backends import StimTableauBackend, ErrorEvent
+from noisiq.backends import StimTableauBackend, ErrorEvent, NonCliffordError
 from noisiq.noise import PauliError, depolarizing_error
 
 def test_stim_tableau_backend_noiseless():
@@ -51,13 +51,19 @@ def test_stim_tableau_backend_with_noise():
 
 def test_stim_tableau_backend_unsupported_gate():
     """Test that unsupported gates raise an error."""
-    # Create a dummy non-Clifford gate (though T is supported now)
-    # Let's try a gate that isn't in our _apply_gate_to_sim mapping
-    custom_gate = gates.Gate(name="CUSTOM", matrix=np.eye(2), num_qubits=1)
-    
     circuit = Circuit(n_qubits=1)
-    circuit.add_gate(custom_gate, (0,))
+    circuit.add_gate(gates.T_DAG, (0,))
     
     backend = StimTableauBackend()
-    with pytest.raises(Exception, match="not supported by StimTableauBackend"):
+    with pytest.raises(NonCliffordError, match="Gate T_DAG not supported by StimTableauBackend"):
         backend.run_single_shot(circuit)
+
+def test_stim_tableau_backend_s_dag():
+    """Test that S_DAG and CX are supported by StimTableauBackend."""
+    circuit = Circuit(n_qubits=2)
+    circuit.add_gate(gates.S_DAG, (0,))
+    circuit.add_gate(gates.CX, (0, 1))
+    
+    backend = StimTableauBackend()
+    result = backend.run_single_shot(circuit)
+    assert len(result.steps) == 2

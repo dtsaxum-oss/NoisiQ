@@ -128,6 +128,7 @@ CNOT = Gate(
         dtype=complex,
     ),
 )
+CX = CNOT
 
 CZ = Gate(
     name="CZ",
