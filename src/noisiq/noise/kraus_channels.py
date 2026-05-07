@@ -13,7 +13,7 @@ class KrausChannel(ABC):
     def _validate_operators(self):
         """
         Validates that the Kraus operators satisfy trace preservation:
-        sum_k K_k^\dagger K_k = I
+        sum_k K_k^\\dagger K_k = I
         """
         if not self.operators:
             raise ValueError("Kraus operators list cannot be empty.")
@@ -31,4 +31,4 @@ class KrausChannel(ABC):
             sum_k += k.conj().T @ k
             
         if not np.allclose(sum_k, identity, atol=1e-8):
-            raise ValueError("Kraus operators are not trace-preserving (sum K^\dagger K != I).")
+            raise ValueError("Kraus operators are not trace-preserving (sum K^\\dagger K != I).")
