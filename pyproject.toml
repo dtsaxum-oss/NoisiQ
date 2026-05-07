@@ -26,6 +26,14 @@ build-backend = "hatchling.build"
 # This is what PyPI and pip read when a user runs `pip install noisiq`.
 # Every field here will appear on the PyPI project page once published.
 # -----------------------------------------------------------------------------
+[tool.pyright]
+include = ["src"]
+venvPath = "."
+venv = ".venv"
+executionEnvironments = [
+  { root = "src" }
+]
+
 [project]
 name            = "noisiq"
 version         = "0.1.0"
@@ -220,4 +228,4 @@ ignore = ["E501"]
 # notebooks, or other non-package content in the distributed wheel.
 # -----------------------------------------------------------------------------
 [tool.hatch.build.targets.wheel]
-include = ["noisiq"]
+packages = ["src/noisiq"]
