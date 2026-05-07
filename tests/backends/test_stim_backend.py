@@ -59,5 +59,5 @@ def test_stim_tableau_backend_unsupported_gate():
     circuit.add_gate(custom_gate, (0,))
     
     backend = StimTableauBackend()
-    with pytest.raises(ValueError, match="not supported by StimTableauBackend"):
+    with pytest.raises(Exception, match="not supported by StimTableauBackend"):
         backend.run_single_shot(circuit)

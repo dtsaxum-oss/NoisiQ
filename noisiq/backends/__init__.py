@@ -2,8 +2,11 @@
 Simulation backends for quantum circuits that have noise models
 """
 
-from .pauli_frame import ErrorEvent, StimTableauBackend, StimTableauResult, StepResult
+from .pauli_frame import ErrorEvent, StimTableauBackend, StimTableauResult, StepResult, NonCliffordError
 from .many_shot_runner import AggregateResult, ManyShotRunner
+from .tsim_backend import TsimBackend
+from .trajectory_backend import TrajectoryBackend
+from .backend_selector import BackendSelector
 
 __all__ = [
     "StimTableauBackend",
@@ -12,4 +15,8 @@ __all__ = [
     "ErrorEvent",
     "ManyShotRunner",
     "AggregateResult",
+    "NonCliffordError",
+    "TsimBackend",
+    "TrajectoryBackend",
+    "BackendSelector",
 ]
