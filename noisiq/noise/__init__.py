@@ -15,6 +15,9 @@ from .pauli_channels import (
     PauliChannel,
     PhaseFlipChannel,
 )
+from .kraus_channels import KrausChannel
+from .amplitude_damping import AmplitudeDamping
+from .t2_dephasing import Dephasing
 
 __all__ = [
     # Low-level Pauli error dataclass + factory functions
@@ -28,4 +31,8 @@ __all__ = [
     "DephaseChannel",
     "BitFlipChannel",
     "PhaseFlipChannel",
+    # Kraus channels
+    "KrausChannel",
+    "AmplitudeDamping",
+    "Dephasing",
 ]

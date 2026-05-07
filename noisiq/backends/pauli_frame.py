@@ -14,6 +14,10 @@ from ..ir import Circuit, Operation
 from ..noise import PauliError
 
 
+class NonCliffordError(Exception):
+    """Raised when a non-Clifford gate is encountered in a Clifford-only backend."""
+    pass
+
 @dataclass
 class ErrorEvent:
     """Record of a single error occurrence."""
@@ -145,4 +149,7 @@ class StimTableauBackend:
         elif name == 'I':
             pass # Identity does nothing in TableauSimulator
         else:
-            raise ValueError(f"Gate {name} not supported by StimTableauBackend")
+            raise NonCliffordError(
+                f"Gate {name} not supported by StimTableauBackend. "
+                f"Use BackendSelector to automatically route to a universal backend."
+            )

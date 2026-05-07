@@ -25,11 +25,13 @@ class SimulationResult:
                 simulated with shots. Keys are bitstrings, values are counts.
     """
 
-    final_state: np.typing.NDArray[np.complex128]
+    final_state: Optional[np.typing.NDArray[np.complex128]] = None
     counts: Optional[Counts] = None
 
     def __repr__(self) -> str:
-        parts = [f"final_state=array(shape={self.final_state.shape})"]
+        parts = []
+        if self.final_state is not None:
+            parts.append(f"final_state=array(shape={self.final_state.shape})")
         if self.counts is not None:
             parts.append(f"counts={self.counts!r}")
         return f"SimulationResult({', '.join(parts)})"
