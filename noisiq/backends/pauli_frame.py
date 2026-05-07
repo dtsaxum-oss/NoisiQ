@@ -5,13 +5,15 @@ Stim-based Tableau simulation for Clifford circuits with step-by-step noise trac
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 import numpy as np
 import stim
 
 from ..ir import Circuit, Operation
 from ..noise import PauliError
+from ..noise.kraus_channels import KrausChannel
+from ..results import SimulationResult
 
 
 class NonCliffordError(Exception):
@@ -65,6 +67,103 @@ class StimTableauBackend:
     Backend using stim.TableauSimulator for step-by-step simulation.
     """
     
+    def run(
+        self,
+        circuit: Circuit,
+        noise_model: Union[KrausChannel, PauliError, Dict[int, Union[KrausChannel, PauliError]], None] = None,
+        n_shots: int = 100,
+        seed: Optional[int] = None,
+    ) -> SimulationResult:
+        """
+        Run n_shots of the circuit with step-by-step noise tracking.
+        Returns a SimulationResult with StimTableauResult inside its meta.
+        """
+        circuit.validate()
+        
+        # Handle different noise_model formats
+        noise_config = {}
+        if isinstance(noise_model, dict):
+            noise_config = noise_model
+        elif noise_model is not None:
+            for i in range(len(circuit.operations)):
+                noise_config[i] = noise_model
+                
+        # Type check
+        for k, v in noise_config.items():
+            if isinstance(v, KrausChannel):
+                raise TypeError("StimTableauBackend does not support non-Pauli noise models (e.g., KrausChannel).")
+        
+        rng = np.random.default_rng(seed=seed)
+        
+        counts = {}
+        all_steps = []
+        final_tableau = None
+        
+        for shot in range(n_shots):
+            sim = stim.TableauSimulator()
+            steps: List[StepResult] = []
+            
+            for op_idx, op in enumerate(circuit.operations):
+                # 1. Apply the ideal gate
+                self._apply_gate_to_sim(sim, op)
+                
+                # 2. Sample and apply noise
+                step_errors: List[ErrorEvent] = []
+                if op_idx in noise_config:
+                    model = noise_config[op_idx]
+                    for qubit in op.qubits:
+                        sampled_pauli = model.sample(rng)
+                        if sampled_pauli != 'I':
+                            if sampled_pauli == 'X':
+                                sim.x(qubit)
+                            elif sampled_pauli == 'Y':
+                                sim.y(qubit)
+                            elif sampled_pauli == 'Z':
+                                sim.z(qubit)
+                            
+                            error_event = ErrorEvent(
+                                gate_index=op_idx,
+                                gate_name=op.gate.name,
+                                qubit=qubit,
+                                pauli=sampled_pauli,
+                                time_step=op_idx
+                            )
+                            step_errors.append(error_event)
+                
+                # 3. Record step result (only for the first shot to save memory, or maybe all?)
+                # Actually, the original run_single_shot returned steps. We can return the first shot's steps in meta.
+                if shot == 0:
+                    steps.append(StepResult(
+                        time_step=op_idx,
+                        operation=op,
+                        errors=step_errors,
+                        tableau=sim.current_inverse_tableau().inverse()
+                    ))
+            
+            if shot == 0:
+                all_steps = steps
+                final_tableau = sim.current_inverse_tableau().inverse()
+                
+            # Measure all qubits
+            measurement = []
+            for q in range(circuit.n_qubits):
+                measurement.append(str(int(sim.measure(q))))
+            bitstring = "".join(measurement)
+            counts[bitstring] = counts.get(bitstring, 0) + 1
+            
+        stim_res = StimTableauResult(
+            steps=all_steps,
+            n_qubits=circuit.n_qubits,
+            seed=seed,
+            final_tableau=final_tableau
+        )
+            
+        return SimulationResult(
+            final_state=None,
+            counts=counts,
+            meta={"stim_result": stim_res}
+        )
+
     def run_single_shot(
         self,
         circuit: Circuit,
@@ -72,62 +171,10 @@ class StimTableauBackend:
         seed: Optional[int] = None,
     ) -> StimTableauResult:
         """
-        Run a single shot of the circuit with step-by-step noise tracking.
+        Legacy method for single shot.
         """
-        circuit.validate()
-        
-        rng = np.random.default_rng(seed=seed)
-        sim = stim.TableauSimulator()
-        
-        # Ensure we have enough qubits (stim handles this dynamically but we might want to be explicit)
-        # stim.TableauSimulator doesn't have an explicit 'set_n_qubits' but it grows as needed.
-        
-        steps: List[StepResult] = []
-        noise_config = noise_config or {}
-        
-        for op_idx, op in enumerate(circuit.operations):
-            # 1. Apply the ideal gate
-            self._apply_gate_to_sim(sim, op)
-            
-            # 2. Sample and apply noise
-            step_errors: List[ErrorEvent] = []
-            if op_idx in noise_config:
-                noise_model = noise_config[op_idx]
-                for qubit in op.qubits:
-                    sampled_pauli = noise_model.sample(rng)
-                    if sampled_pauli != 'I':
-                        if sampled_pauli == 'X':
-                            sim.x(qubit)
-                        elif sampled_pauli == 'Y':
-                            sim.y(qubit)
-                        elif sampled_pauli == 'Z':
-                            sim.z(qubit)
-                        
-                        error_event = ErrorEvent(
-                            gate_index=op_idx,
-                            gate_name=op.gate.name,
-                            qubit=qubit,
-                            pauli=sampled_pauli,
-                            time_step=op_idx
-                        )
-                        step_errors.append(error_event)
-            
-            # 3. Record step result
-            # Capture a copy of the tableau for this step if needed for animation
-            # Warning: this might be slow for very large circuits
-            steps.append(StepResult(
-                time_step=op_idx,
-                operation=op,
-                errors=step_errors,
-                tableau=sim.current_inverse_tableau().inverse() # Get current tableau
-            ))
-            
-        return StimTableauResult(
-            steps=steps,
-            n_qubits=circuit.n_qubits,
-            seed=seed,
-            final_tableau=sim.current_inverse_tableau().inverse()
-        )
+        res = self.run(circuit, noise_model=noise_config, n_shots=1, seed=seed)
+        return res.meta["stim_result"]
 
     def _apply_gate_to_sim(self, sim: stim.TableauSimulator, op: Operation):
         """Map NoisiQ gates to stim instructions."""

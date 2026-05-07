@@ -94,6 +94,12 @@ class ManyShotRunner:
 
         circuit.validate()
 
+        # Check for non-Clifford gates since ManyShotRunner uses StimTableauBackend
+        for op in circuit.operations:
+            name = op.gate.name.upper()
+            if name not in ['H', 'X', 'Y', 'Z', 'S', 'S_DAG', 'CNOT', 'CX', 'CZ', 'I']:
+                raise NotImplementedError(f"ManyShotRunner only supports Clifford circuits. Found non-Clifford gate: {name}")
+
         n_qubits = circuit.n_qubits
         n_ops = len(circuit.operations)
         counts = np.zeros((n_qubits, n_ops), dtype=np.int64)
@@ -102,12 +108,28 @@ class ManyShotRunner:
         rng = np.random.default_rng(seed)
         shot_seeds = rng.integers(0, 2**31, size=n_shots)
 
+        # StimTableauBackend now returns SimulationResult with meta["stim_result"]
+        # We can just run all shots in one go since StimTableauBackend supports n_shots natively
+        sim_result = self._backend.run(
+            circuit,
+            noise_model=noise_config,
+            n_shots=n_shots,
+            seed=seed,
+        )
+        stim_result = sim_result.meta["stim_result"]
+        
+        # Actually, the StimTableauBackend only records steps for the FIRST shot right now
+        # To accumulate errors across all shots, ManyShotRunner either needs to use single-shot
+        # or StimTableauBackend needs to record errors for all shots.
+        # Since we modified StimTableauBackend to only record steps for shot 0,
+        # we should just call it n_shots times with n_shots=1, or use the legacy method.
         for i, shot_seed in enumerate(shot_seeds):
-            result = self._backend.run_single_shot(
+            result = self._backend.run(
                 circuit,
-                noise_config=noise_config,
+                noise_model=noise_config,
+                n_shots=1,
                 seed=int(shot_seed),
-            )
+            ).meta["stim_result"]
             for step in result.steps:
                 for error in step.errors:
                     counts[error.qubit, error.time_step] += 1

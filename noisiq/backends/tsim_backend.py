@@ -1,9 +1,10 @@
 import numpy as np
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Union
 import tsim
 
 from ..ir import Circuit
 from ..noise import PauliError
+from ..noise.kraus_channels import KrausChannel
 from .pauli_frame import StimTableauResult
 
 class TsimBackend:
@@ -26,30 +27,45 @@ class TsimBackend:
         'I': 'I',
     }
 
-    def run_single_shot(
+    def run(
         self,
         circuit: Circuit,
-        noise_config: Optional[Dict[int, PauliError]] = None,
+        noise_model: Union[KrausChannel, PauliError, Dict[int, Union[KrausChannel, PauliError]], None] = None,
+        n_shots: int = 100,
         seed: Optional[int] = None,
     ):
         """
-        Run a single shot using tsim.
+        Run n_shots using tsim.
         """
         circuit.validate()
+
+        # Handle different noise_model formats
+        noise_config = {}
+        if isinstance(noise_model, dict):
+            noise_config = noise_model
+        elif noise_model is not None:
+            for i in range(len(circuit.operations)):
+                noise_config[i] = noise_model
 
         tsim_str = self._build_tsim_circuit(circuit, noise_config)
         tsim_circuit = tsim.Circuit(tsim_str)
 
         sampler = tsim_circuit.compile_sampler(seed=seed)
-        samples = sampler.sample(shots=1)
+        samples = sampler.sample(shots=n_shots)
 
         # Note: bloqade-tsim is a sampler based on ZX-calculus stabilizer rank decomposition.
         # It does not natively support extraction of the full state vector. For step-by-step
         # visualization of the state vector, TrajectoryBackend should be used as a fallback.
         from ..results import SimulationResult
-        return SimulationResult(final_state=None, counts={"".join(str(int(b)) for b in samples[0]): 1})
+        
+        counts = {}
+        for sample in samples:
+            bitstring = "".join(str(int(b)) for b in sample)
+            counts[bitstring] = counts.get(bitstring, 0) + 1
+            
+        return SimulationResult(final_state=None, counts=counts)
 
-    def _build_tsim_circuit(self, circuit: Circuit, noise_config: Optional[Dict[int, PauliError]] = None) -> str:
+    def _build_tsim_circuit(self, circuit: Circuit, noise_config: Optional[Dict[int, Union[KrausChannel, PauliError]]] = None) -> str:
         lines = []
         noise_config = noise_config or {}
 
@@ -66,6 +82,8 @@ class TsimBackend:
             # Apply noise
             if op_idx in noise_config:
                 noise_model = noise_config[op_idx]
+                if isinstance(noise_model, KrausChannel):
+                    raise TypeError("TsimBackend does not support non-Pauli noise models (e.g., KrausChannel).")
                 for qubit in op.qubits:
                     p_x = noise_model.p_x
                     p_y = noise_model.p_y

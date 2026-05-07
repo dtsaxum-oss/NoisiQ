@@ -31,13 +31,16 @@ class BackendSelector:
             has_non_pauli_noise = True
 
         has_non_clifford_gates = False
+        has_unsupported_tsim_gates = False
+        
         for op in circuit.operations:
             name = op.gate.name.upper()
-            if name in ['T', 'T_DAG', 'RX', 'RY', 'RZ', 'U3']:
+            if name in ['T', 'T_DAG', 'RX', 'RY', 'RZ', 'U3'] or name not in ['H', 'X', 'Y', 'Z', 'S', 'S_DAG', 'CNOT', 'CX', 'CZ', 'I']:
                 has_non_clifford_gates = True
-                break
+            if name not in TsimBackend.GATE_MAP:
+                has_unsupported_tsim_gates = True
 
-        if has_non_pauli_noise:
+        if has_non_pauli_noise or (has_non_clifford_gates and has_unsupported_tsim_gates):
             return TrajectoryBackend()
         elif has_non_clifford_gates:
             return TsimBackend()

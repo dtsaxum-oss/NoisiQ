@@ -27,6 +27,7 @@ class SimulationResult:
 
     final_state: Optional[np.typing.NDArray[np.complex128]] = None
     counts: Optional[Counts] = None
+    meta: Optional[Dict[str, Any]] = None
 
     def __repr__(self) -> str:
         parts = []
