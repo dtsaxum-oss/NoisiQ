@@ -112,12 +112,20 @@ class ManyShotRunner:
         # single shot, so aggregate counts are built by running one shot at a
         # time and accumulating the reported error events.
         for i, shot_seed in enumerate(shot_seeds):
-            result = self._backend.run(
+            sim_result = self._backend.run(
                 circuit,
                 noise_model=noise_config,
                 n_shots=1,
                 seed=int(shot_seed),
-            ).meta["stim_result"]
+            )
+
+            if sim_result.meta is None or "stim_result" not in sim_result.meta:
+                raise TypeError(
+                    f"Backend {type(self._backend).__name__} is incompatible with ManyShotRunner. "
+                    "ManyShotRunner requires a backend that provides step-by-step error metadata (e.g., StimTableauBackend)."
+                )
+
+            result = sim_result.meta["stim_result"]
             for step in result.steps:
                 for error in step.errors:
                     counts[error.qubit, error.time_step] += 1

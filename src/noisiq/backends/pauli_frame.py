@@ -5,7 +5,7 @@ Stim-based Tableau simulation for Clifford circuits with step-by-step noise trac
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, Mapping
 
 import numpy as np
 import stim
@@ -70,7 +70,7 @@ class StimTableauBackend:
     def run(
         self,
         circuit: Circuit,
-        noise_model: Union[KrausChannel, PauliError, Dict[int, Union[KrausChannel, PauliError]], None] = None,
+        noise_model: Union[KrausChannel, PauliError, Mapping[int, Union[KrausChannel, PauliError]], None] = None,
         n_shots: int = 100,
         seed: Optional[int] = None,
     ) -> SimulationResult:
