@@ -94,6 +94,12 @@ class ManyShotRunner:
 
         circuit.validate()
 
+        # Check for non-Clifford gates since ManyShotRunner uses StimTableauBackend
+        for op in circuit.operations:
+            name = op.gate.name.upper()
+            if name not in ['H', 'X', 'Y', 'Z', 'S', 'S_DAG', 'CNOT', 'CX', 'CZ', 'I']:
+                raise NotImplementedError(f"ManyShotRunner only supports Clifford circuits. Found non-Clifford gate: {name}")
+
         n_qubits = circuit.n_qubits
         n_ops = len(circuit.operations)
         counts = np.zeros((n_qubits, n_ops), dtype=np.int64)
@@ -102,12 +108,24 @@ class ManyShotRunner:
         rng = np.random.default_rng(seed)
         shot_seeds = rng.integers(0, 2**31, size=n_shots)
 
+        # StimTableauBackend currently records step/error details only for a
+        # single shot, so aggregate counts are built by running one shot at a
+        # time and accumulating the reported error events.
         for i, shot_seed in enumerate(shot_seeds):
-            result = self._backend.run_single_shot(
+            sim_result = self._backend.run(
                 circuit,
-                noise_config=noise_config,
+                noise_model=noise_config,
+                n_shots=1,
                 seed=int(shot_seed),
             )
+
+            if sim_result.meta is None or "stim_result" not in sim_result.meta:
+                raise TypeError(
+                    f"Backend {type(self._backend).__name__} is incompatible with ManyShotRunner. "
+                    "ManyShotRunner requires a backend that provides step-by-step error metadata (e.g., StimTableauBackend)."
+                )
+
+            result = sim_result.meta["stim_result"]
             for step in result.steps:
                 for error in step.errors:
                     counts[error.qubit, error.time_step] += 1

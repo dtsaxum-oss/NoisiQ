@@ -36,7 +36,9 @@ def test_gate_creation_non_square_matrix_fails():
         (gates.Z, "Z", 1, (2, 2)),
         (gates.H, "H", 1, (2, 2)),
         (gates.S, "S", 1, (2, 2)),
+        (gates.S_DAG, "S_DAG", 1, (2, 2)),
         (gates.T, "T", 1, (2, 2)),
+        (gates.T_DAG, "T_DAG", 1, (2, 2)),
         (gates.CNOT, "CNOT", 2, (4, 4)),
     ],
 )
