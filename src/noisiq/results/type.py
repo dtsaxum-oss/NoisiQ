@@ -25,11 +25,31 @@ class SimulationResult:
                 simulated with shots. Keys are bitstrings, values are counts.
     """
 
-    final_state: np.typing.NDArray[np.complex128]
+    final_state: Optional[np.typing.NDArray[np.complex128]] = None
     counts: Optional[Counts] = None
+    meta: Optional[Dict[str, Any]] = None
+
+    def excited_state_probability(self, qubit: int) -> float:
+        """
+        Calculate the probability of measuring the given qubit in the excited state (|1>).
+        """
+        if self.counts is None:
+            raise ValueError("Cannot calculate probability without measurement counts.")
+        
+        total_shots = sum(self.counts.values())
+        if total_shots == 0:
+            return 0.0
+            
+        excited_shots = sum(
+            count for bitstring, count in self.counts.items()
+            if len(bitstring) > qubit and bitstring[qubit] == '1'
+        )
+        return excited_shots / total_shots
 
     def __repr__(self) -> str:
-        parts = [f"final_state=array(shape={self.final_state.shape})"]
+        parts = []
+        if self.final_state is not None:
+            parts.append(f"final_state=array(shape={self.final_state.shape})")
         if self.counts is not None:
             parts.append(f"counts={self.counts!r}")
         return f"SimulationResult({', '.join(parts)})"

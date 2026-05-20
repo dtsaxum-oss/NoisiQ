@@ -212,3 +212,10 @@ def test_statistical_convergence_depolarizing():
                                   noise_config=noise_config, seed=42)
     measured = result.error_rate_matrix[0, 0]
     assert abs(measured - 0.3) < 0.02, f"Expected ~0.3, got {measured:.4f}"
+
+def test_many_shot_runner_rejects_non_clifford():
+    c = Circuit(1)
+    c.tgate(0)
+    runner = ManyShotRunner()
+    with pytest.raises(NotImplementedError, match="only supports Clifford circuits"):
+        runner.run(c, n_shots=10)

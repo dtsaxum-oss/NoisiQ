@@ -126,9 +126,15 @@ class Circuit:
     def s(self, qubit: int, t: Optional[int] = None) -> "Circuit":
         return self.add_gate(gates.S, (qubit,), t=t)
 
+    def s_dag(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.S_DAG, (qubit,), t=t)
+
     def tgate(self, qubit: int, t: Optional[int] = None) -> "Circuit":
         """T gate — named tgate to avoid collision with the t= layer parameter."""
         return self.add_gate(gates.T, (qubit,), t=t)
+
+    def t_dag(self, qubit: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.T_DAG, (qubit,), t=t)
 
     def identity(self, qubit: int, t: Optional[int] = None) -> "Circuit":
         return self.add_gate(gates.I, (qubit,), t=t)

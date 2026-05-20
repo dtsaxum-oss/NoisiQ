@@ -94,10 +94,22 @@ S = Gate(
     matrix=np.array([[1, 0], [0, 1j]], dtype=complex),
 )
 
+S_DAG = Gate(
+    name="S_DAG",
+    num_qubits=1,
+    matrix=np.array([[1, 0], [0, -1j]], dtype=complex),
+)
+
 T = Gate(
     name="T",
     num_qubits=1,
     matrix=np.array([[1, 0], [0, np.exp(1j * np.pi / 4)]], dtype=complex),
+)
+
+T_DAG = Gate(
+    name="T_DAG",
+    num_qubits=1,
+    matrix=np.array([[1, 0], [0, np.exp(-1j * np.pi / 4)]], dtype=complex),
 )
 
 
@@ -116,6 +128,7 @@ CNOT = Gate(
         dtype=complex,
     ),
 )
+CX = CNOT
 
 CZ = Gate(
     name="CZ",
