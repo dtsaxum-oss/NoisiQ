@@ -103,25 +103,34 @@ class PauliFrame:
         else:
             raise NotImplementedError(f"Gate {gate} not supported in PauliFrame tracker.")
 
-def compute_error_trajectories(circuit: Circuit, result: StimTableauResult) -> List[PauliFrame]:
+def compute_error_trajectories(circuit: Circuit, result: StimTableauResult) -> Dict[int, PauliFrame]:
     """
-    Computes the accumulated PauliFrame for each time step.
-    Returns a list of PauliFrames where the i-th frame is the state of errors 
-    AFTER the i-th step (ideal gate + injected errors).
+    Computes the accumulated PauliFrame after each time step (layer).
+
+    Returns a dict mapping time-step t -> PauliFrame representing the error
+    state AFTER all operations at that layer have been applied and injected
+    errors accumulated.
+
+    Steps are processed in time-step order (not circuit.operations insertion
+    order). This matters whenever the operations list is not sorted by t —
+    e.g. when a later-added gate lands at an earlier time slot because its
+    qubit was idle. Processing out of time order would bake future-gate
+    propagation into the displayed frame for earlier time steps.
     """
     frame = PauliFrame(circuit.n_qubits)
-    trajectories = []
+    layer_frames: Dict[int, PauliFrame] = {}
 
-    for step in result.steps:
-        # 1. Propagate existing errors through the ideal operation
+    # Sort by (t, original op index) so same-layer gates stay in insertion
+    # order relative to each other while ensuring cross-layer order is correct.
+    sorted_steps = sorted(result.steps, key=lambda s: (s.operation.t, s.time_step))
+
+    for step in sorted_steps:
         frame.apply_gate(step.operation.gate.name, step.operation.qubits)
-        
-        # 2. Inject any new errors that occurred at this step
         for error in step.errors:
             frame.inject_error(error.qubit, error.pauli)
-            
-        # 3. Record the frame state
-        trajectories.append(frame.copy())
-        
-    return trajectories
+        # Overwrite on each op at this t; the final write captures the full
+        # layer state after all gates at that time step have been applied.
+        layer_frames[step.operation.t] = frame.copy()
+
+    return layer_frames
 

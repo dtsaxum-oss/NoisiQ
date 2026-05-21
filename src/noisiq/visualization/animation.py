@@ -14,7 +14,7 @@ Usage::
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
@@ -42,7 +42,7 @@ class CircuitAnimator:
         self,
         circuit: Circuit,
         result,
-        trajectories: Optional[List[PauliFrame]] = None,
+        trajectories: Optional[Dict[int, PauliFrame]] = None,
     ) -> None:
         from ..backends.pauli_frame import StimTableauResult
         from ..backends.many_shot_runner import AggregateResult
@@ -50,7 +50,7 @@ class CircuitAnimator:
         self.circuit = circuit
         self.result = result
         self._is_many_shot = isinstance(result, AggregateResult)
-        self._trajectories = trajectories or []
+        self._trajectories = trajectories or {}
 
         # Ordered unique layer indices
         self._layers: List[int] = (
@@ -59,13 +59,12 @@ class CircuitAnimator:
             else [0]
         )
 
-        # Build layer → trajectory frame mapping (single-shot only)
+        # Build layer → trajectory frame mapping (single-shot only).
+        # trajectories is now a Dict[int, PauliFrame] keyed by time-step t,
+        # so we can use it directly without rebuilding from index lookups.
         self._layer_to_frame: dict[int, PauliFrame] = {}
         if not self._is_many_shot and self._trajectories:
-            for step in result.steps:
-                idx = step.time_step
-                if idx < len(self._trajectories):
-                    self._layer_to_frame[step.operation.t] = self._trajectories[idx]
+            self._layer_to_frame = dict(self._trajectories)
 
     # ------------------------------------------------------------------
     # Public API
