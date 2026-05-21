@@ -105,17 +105,7 @@ def plot_t1_t2_decay(
 ) -> plt.Figure:
     """Plot how the Bloch vector shrinks over time under T1 / T2 noise.
 
-    Layout: two-panel figure.
-      Left  — Bloch sphere showing the initial vector (pure state) and the
-               final vector (most-decayed), connected by a fading trajectory.
-      Right — Three line curves: x(t), y(t), z(t) vs time in µs.
-
-    Steps (to implement):
-        1. For each result in results, call _partial_trace(result.final_state,
-           qubit, n_qubits) to get the 2x2 reduced density matrix.
-        2. Call density_matrix_to_bloch_vector on each reduced rho.
-        3. Pass all vectors to draw_bloch_sphere on the left Axes.
-        4. Plot x, y, z components vs t_values * 1e6 on the right Axes.
+    Not yet implemented.
 
     Args:
         results:  List of SimulationResult from TrajectoryBackend, one per
@@ -129,6 +119,7 @@ def plot_t1_t2_decay(
         matplotlib Figure.
 
     Raises:
+        NotImplementedError: Always — pending implementation.
         ValueError: If len(results) != len(t_values).
     """
     if len(results) != len(t_values):
@@ -147,16 +138,7 @@ def plot_trajectory_ensemble(
 ) -> plt.Figure:
     """Show individual trajectory endpoints alongside their density-matrix average.
 
-    Each trajectory_state is a pure statevector |ψ⟩ (shape (2^n,)).  For the
-    Bloch sphere, use the single-qubit reduced state.  The average density matrix
-    ρ = (1/N) Σ |ψ_i⟩⟨ψ_i| is shown as a distinct arrow inside the sphere,
-    making the Monte Carlo interpretation visually concrete.
-
-    Steps (to implement):
-        1. Convert each |ψ_i⟩ → 2x2 outer product → density_matrix_to_bloch_vector.
-        2. Plot individual endpoints as small dots near the sphere surface.
-        3. Call density_matrix_to_bloch_vector(average_rho) for the average arrow.
-        4. Call draw_bloch_sphere with the average vector highlighted.
+    Not yet implemented.
 
     Args:
         trajectory_states: List of (2^n,) complex statevectors (pure states).
@@ -166,5 +148,8 @@ def plot_trajectory_ensemble(
 
     Returns:
         matplotlib Figure.
+
+    Raises:
+        NotImplementedError: Always — pending implementation.
     """
     raise NotImplementedError

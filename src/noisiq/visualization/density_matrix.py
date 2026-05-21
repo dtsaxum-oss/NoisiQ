@@ -156,14 +156,8 @@ def plot_density_matrix(
       Left Axes  — Re(ρ), diverging colormap centered at zero.
       Right Axes — Im(ρ), same colormap and scale.
     Both share a single colorbar.  Tick labels use computational basis strings
-    (e.g. |00⟩, |01⟩, …) derived from the matrix dimension.
-
-    Steps (to implement):
-        1. Compute n_qubits = log2(rho.shape[0]); generate basis labels.
-        2. vmax = max(|Re(ρ)|, |Im(ρ)|) for a symmetric colormap range.
-        3. Plot Re(ρ) with ax.imshow(..., cmap='RdBu_r', vmin=-vmax, vmax=vmax).
-        4. Plot Im(ρ) identically on the second Axes.
-        5. Add a shared colorbar; annotate purity Tr(ρ²) in the title.
+    (e.g. |00⟩, |01⟩, …) derived from the matrix dimension.  The default
+    title includes purity Tr(ρ²).
 
     Args:
         rho:   Complex density matrix of shape (2^n, 2^n).
