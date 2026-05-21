@@ -251,7 +251,7 @@ def test_state_fidelity_in_range_after_trajectory(simple_circuit, eagle_profile)
     psi_ideal = _ghz_statevector(3)
     noise = eagle_profile.to_noise_model(simple_circuit, mode="t2")
     result = TrajectoryBackend().run(simple_circuit, noise_model=noise, n_shots=300, seed=0)
-    F = state_fidelity(psi_ideal, result.density_matrix)
+    F = state_fidelity(psi_ideal, result.final_state)
     assert 0.0 < F <= 1.0 + 1e-8
 
 

@@ -1,5 +1,5 @@
 """
-Density matrix visualization and fidelity metrics for TrajectoryResult outputs.
+Density matrix visualization and fidelity metrics for trajectory simulation results.
 
 Provides two views of non-Pauli simulation results:
   1. plot_density_matrix  — Re(ρ) and Im(ρ) as side-by-side color heatmaps.
@@ -14,7 +14,7 @@ And a fidelity utility:
 Functions:
     state_fidelity      : Quantum state fidelity between ideal and noisy states
     plot_density_matrix : Side-by-side real/imag heatmaps of ρ
-    plot_purity_decay   : Tr(ρ²) vs time from a list of TrajectoryResults
+    plot_purity_decay   : Tr(ρ²) vs time from a list of SimulationResults
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from typing import Optional
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..backends.trajectory_backend import TrajectoryResult
+from ..results import SimulationResult
 
 
 # ==============================================================================
@@ -96,13 +96,13 @@ def state_fidelity(
        Uhlmann fidelity F = [Tr(√(√σ ρ √σ))]².
 
     In both cases noisy must be a 2-D density matrix (e.g. from
-    TrajectoryResult.density_matrix).
+    SimulationResult.final_state returned by TrajectoryBackend).
 
     Args:
         ideal: Ideal state — either a 1-D complex statevector of length 2^n
                or a 2-D complex density matrix of shape (2^n, 2^n).
         noisy: Noisy density matrix of shape (2^n, 2^n), e.g.
-               TrajectoryResult.density_matrix.
+               SimulationResult.final_state.
 
     Returns:
         Fidelity F in [0, 1].  F = 1 means perfect match; F = 0 means
@@ -114,7 +114,7 @@ def state_fidelity(
     Example:
         ghz = np.zeros(8)
         ghz[0] = ghz[7] = 1.0 / np.sqrt(2)          # |000⟩ + |111⟩
-        F = state_fidelity(ghz, trajectory_result.density_matrix)
+        F = state_fidelity(ghz, result.final_state)
     """
     ideal = np.asarray(ideal, dtype=complex)
     noisy = np.asarray(noisy, dtype=complex)
@@ -214,13 +214,13 @@ def plot_density_matrix(
 
 
 def plot_purity_decay(
-    results: list[TrajectoryResult],
+    results: list[SimulationResult],
     t_values: np.ndarray,
     labels: Optional[list[str]] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
 ) -> plt.Figure:
-    """Plot Tr(ρ²) (purity) vs time from a list of TrajectoryResults.
+    """Plot Tr(ρ²) (purity) vs time from a list of SimulationResults.
 
     Purity is a noise-model-agnostic scalar quality metric:
       - 1.0  → perfectly pure state (no decoherence)
@@ -229,17 +229,12 @@ def plot_purity_decay(
     Works for any KrausChannel or CombinedChannel — does not require
     discrete error events the way AggregateResult fidelity estimates do.
 
-    Steps (to implement):
-        1. For each result, compute _purity(result.density_matrix).
-        2. Plot purity vs t_values * 1e6 (µs on x-axis).
-        3. Draw a dashed horizontal line at 1/d (maximally mixed limit).
-        4. Label axes: x = "Time (µs)", y = "Purity  Tr(ρ²)".
-
     Args:
-        results:  List of TrajectoryResult, one per entry in t_values.
+        results:  List of SimulationResult from TrajectoryBackend, one per
+                  entry in t_values. Each result.final_state must be a 2-D
+                  density matrix.
         t_values: 1D array of time values in seconds.
-        labels:   Optional legend labels (one per curve).  Useful when
-                  plotting multiple channels on the same Axes.
+        labels:   Optional legend labels (one per curve).
         title:    Optional Axes title.
         ax:       Existing Axes to draw on, or None to create a new Figure.
 
@@ -256,9 +251,9 @@ def plot_purity_decay(
         )
 
     t_values = np.asarray(t_values)
-    d = results[0].density_matrix.shape[0]
+    d = results[0].final_state.shape[0]
     min_purity = 1.0 / d
-    purities = [_purity(r.density_matrix) for r in results]
+    purities = [_purity(r.final_state) for r in results]
     t_us = t_values * 1e6  # display in µs
 
     if ax is None:

@@ -21,7 +21,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 — registers 3D projection
 
-from ..backends.trajectory_backend import TrajectoryResult
+from ..results import SimulationResult
 from ..backends.trajectory_backend import _partial_trace
 from .theme import ERROR_COLOR, WIRE_COLOR
 
@@ -97,7 +97,7 @@ def draw_bloch_sphere(
 
 
 def plot_t1_t2_decay(
-    results: list[TrajectoryResult],
+    results: list[SimulationResult],
     t_values: np.ndarray,
     qubit: int = 0,
     title: Optional[str] = None,
@@ -111,14 +111,15 @@ def plot_t1_t2_decay(
       Right — Three line curves: x(t), y(t), z(t) vs time in µs.
 
     Steps (to implement):
-        1. For each result in results, call _partial_trace(result.density_matrix,
-           qubit, result.n_qubits) to get the 2x2 reduced density matrix.
+        1. For each result in results, call _partial_trace(result.final_state,
+           qubit, n_qubits) to get the 2x2 reduced density matrix.
         2. Call density_matrix_to_bloch_vector on each reduced rho.
         3. Pass all vectors to draw_bloch_sphere on the left Axes.
         4. Plot x, y, z components vs t_values * 1e6 on the right Axes.
 
     Args:
-        results:  List of TrajectoryResult, one per entry in t_values.
+        results:  List of SimulationResult from TrajectoryBackend, one per
+                  entry in t_values.
         t_values: 1D array of gate-time values in seconds.
         qubit:    Qubit index to extract from multi-qubit results.
         title:    Optional figure suptitle.

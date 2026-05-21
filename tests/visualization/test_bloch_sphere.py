@@ -24,7 +24,7 @@ from noisiq.visualization.bloch_sphere import (
     plot_t1_t2_decay,
     plot_trajectory_ensemble,
 )
-from noisiq.backends.trajectory_backend import TrajectoryBackend, TrajectoryResult
+from noisiq.backends.trajectory_backend import TrajectoryBackend
 from noisiq.noise.amplitude_damping import AmplitudeDamping
 from noisiq.ir import Circuit
 from noisiq.ir import gates as ir

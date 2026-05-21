@@ -2,14 +2,12 @@
 Monte Carlo quantum trajectory backend for Kraus and Pauli noise channels.
 
 Classes:
-    TrajectoryResult: Density matrix approximation from N trajectory shots
     TrajectoryBackend: Runs trajectory simulation for Kraus and Pauli noise
 """
 
 from __future__ import annotations
 
 import string
-from dataclasses import dataclass
 from typing import Dict, Optional, Union
 
 import numpy as np
@@ -17,45 +15,8 @@ import numpy as np
 from ..ir.circuit import Circuit
 from ..noise.kraus_channels import KrausChannel
 from ..noise.pauli_error import PauliError
+from ..results import SimulationResult
 
-
-@dataclass(frozen=True)
-class TrajectoryResult:
-    """
-    Approximate density matrix from N quantum trajectory shots.
-
-    The density matrix is computed as the shot-average of outer products:
-        ρ ≈ (1/N) Σ_i |ψ_i⟩⟨ψ_i|
-
-    Attributes:
-        density_matrix: Complex array of shape (2^n, 2^n).
-        n_shots:        Number of trajectory samples used.
-        n_qubits:       Number of qubits in the simulated circuit.
-        seed:           Top-level RNG seed, or None if unseeded.
-    """
-
-    density_matrix: np.ndarray
-    n_shots: int
-    n_qubits: int
-    seed: Optional[int] = None
-
-    def excited_state_probability(self, qubit: int) -> float:
-        """Return P(|1⟩) for qubit by tracing out all other qubits.
-
-        Args:
-            qubit: Index of the qubit to query (0-based).
-
-        Returns:
-            Probability of measuring |1⟩ on the specified qubit.
-        """
-        rho_q = _partial_trace(self.density_matrix, qubit, self.n_qubits)
-        return float(rho_q[1, 1].real)
-
-    def __repr__(self) -> str:
-        return (
-            f"TrajectoryResult(n_qubits={self.n_qubits}, "
-            f"n_shots={self.n_shots}, seed={self.seed})"
-        )
 
 
 def _partial_trace(
@@ -178,10 +139,13 @@ class TrajectoryBackend:
     noisy gate, evolving a pure statevector through the circuit. The approximate
     density matrix is the average of N outer products |ψ_i⟩⟨ψ_i|.
 
-    Practical qubit limit: 15 (memory scales as 4^n per shot).
+    Qubit limit: 13. The density matrix accumulator scales as 4^n in memory
+    (256 MB at n=12, 1 GB at n=13). For larger circuits use a Pauli noise
+    model, which BackendSelector routes to the memory-efficient Pauli-frame
+    backends (StimTableauBackend or TsimBackend).
     """
 
-    _MAX_QUBITS: int = 15
+    _MAX_QUBITS: int = 13
 
     def run(
         self,
@@ -189,7 +153,7 @@ class TrajectoryBackend:
         noise_model: Union[KrausChannel, PauliError, Dict[int, Union[KrausChannel, PauliError]], None] = None,
         n_shots: int = 500,
         seed: Optional[int] = None,
-    ) -> TrajectoryResult:
+    ) -> SimulationResult:
         """
         Run N trajectory shots and return the averaged density matrix.
 
@@ -204,7 +168,8 @@ class TrajectoryBackend:
             seed:        Top-level RNG seed for reproducibility.
 
         Returns:
-            TrajectoryResult with density_matrix of shape (2^n, 2^n).
+            SimulationResult with final_state as the density matrix of shape
+            (2^n, 2^n), and meta keys n_shots, n_qubits, seed.
 
         Raises:
             ValueError: If n_shots < 1 or circuit has more than _MAX_QUBITS qubits.
@@ -215,8 +180,11 @@ class TrajectoryBackend:
         n = circuit.n_qubits
         if n > self._MAX_QUBITS:
             raise ValueError(
-                f"TrajectoryBackend supports up to {self._MAX_QUBITS} qubits, "
-                f"got {n}"
+                f"TrajectoryBackend supports up to {self._MAX_QUBITS} qubits "
+                f"(got {n}). The density matrix accumulator requires 4^n memory "
+                f"(~1 GB at n=13). For larger circuits, switch to a Pauli noise "
+                f"model — BackendSelector will automatically route those to the "
+                f"memory-efficient Pauli-frame backends."
             )
 
         noise_dict: Dict[int, Union[KrausChannel, PauliError]] = {}
@@ -257,9 +225,7 @@ class TrajectoryBackend:
 
             rho_sum += np.outer(state, state.conj())
 
-        return TrajectoryResult(
-            density_matrix=rho_sum / n_shots,
-            n_shots=n_shots,
-            n_qubits=n,
-            seed=seed,
+        return SimulationResult(
+            final_state=rho_sum / n_shots,
+            meta={"n_shots": n_shots, "n_qubits": n, "seed": seed},
         )

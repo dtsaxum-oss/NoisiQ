@@ -142,7 +142,7 @@ def test_plot_purity_decay_values_in_range():
     """All purity values must be in (0, 1]."""
     results, _ = _t1_results()
     for r in results:
-        p = _purity(r.density_matrix)
+        p = _purity(r.final_state)
         assert 0.0 < p <= 1.0 + 1e-10
 
 
@@ -152,7 +152,7 @@ def test_plot_purity_decay_t1_reaches_minimum():
     relaxes to |0⟩.  We verify that the minimum purity in the sweep is
     strictly below the initial value (noise had a measurable effect)."""
     results, _ = _t1_results(n_points=8)
-    purities = [_purity(r.density_matrix) for r in results]
+    purities = [_purity(r.final_state) for r in results]
     assert min(purities) < purities[0] - 0.05
 
 
