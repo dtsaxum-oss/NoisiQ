@@ -142,22 +142,32 @@ class HardwareProfile:
     def to_pauli_noise_model(self, circuit: "Circuit") -> dict:
         """Build a Pauli noise model for use with ManyShotRunner.
 
-        Converts the hardware's gate error rates and T2 coherence time into a
-        per-gate PauliError dict using the standard Pauli-channel approximation:
+        Converts the hardware's gate error rates, T1 relaxation, and T2
+        coherence time into a per-gate PauliError dict using the standard
+        Pauli-channel approximation:
 
             1. Gate infidelity → depolarizing noise:
-               p_x = p_y = p_z = gate_error / 3
+               p_dep = gate_error / 3
 
-            2. T2 dephasing per gate duration → Z-error:
+            2. T1 relaxation (amplitude damping Pauli twirl):
+               γ = 1 − exp(−t_gate / T1)
+               p_t1 = γ / 4
+
+            3. T2 dephasing per gate duration → additional Z-error:
                p_z_t2 = (1 − exp(−2·t_gate / T2)) / 2
 
             Combined:
-               PauliError(p_x=p_dep, p_y=p_dep, p_z=p_dep + p_z_t2)
+               p_x = p_dep + p_t1
+               p_y = p_dep + p_t1
+               p_z = p_dep + p_t1 + p_z_t2
 
-        This is the industry-standard Pauli approximation used by Stim noise
-        models and referenced in the Sandia DEM paper.  It introduces ~5–10%
-        error compared to an exact density-matrix simulation, but enables fast
-        large-scale multi-shot Clifford simulation.
+        The T1 term makes platform comparisons physically accurate: IBM Eagle
+        (T1 ≈ 100 µs) and IonQ Forte (T1 >> 1 s) produce measurably different
+        depolarizing contributions even for equal gate error rates.
+
+        This follows the industry-standard Pauli-twirl approximation used by
+        Stim noise models.  It introduces ~5–10% error vs exact density-matrix
+        simulation but enables fast large-scale multi-shot Clifford simulation.
 
         Args:
             circuit: The NoisiQ Circuit to build the noise dict for.
@@ -179,11 +189,16 @@ class HardwareProfile:
                 t_gate = self.gate_times.two_qubit_ns * 1e-9
 
             p_dep = p_gate / 3.0
+
+            # T1 amplitude-damping Pauli twirl: γ/4 added to each axis
+            gamma = 1.0 - np.exp(-t_gate / self.t1)
+            p_t1 = gamma / 4.0
+
             p_z_t2 = (1.0 - np.exp(-2.0 * t_gate / self.t2)) / 2.0
 
-            p_x = p_dep
-            p_y = p_dep
-            p_z = p_dep + p_z_t2
+            p_x = p_dep + p_t1
+            p_y = p_dep + p_t1
+            p_z = p_dep + p_t1 + p_z_t2
 
             # Clamp to physical bounds (p_x + p_y + p_z <= 1)
             total = p_x + p_y + p_z
