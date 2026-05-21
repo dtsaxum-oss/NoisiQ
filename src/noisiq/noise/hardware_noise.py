@@ -211,7 +211,7 @@ class HardwareProfile:
             circuit: The NoisiQ Circuit to build the noise dict for.
             mode:    Which decoherence channel to apply per gate:
                        "t1"  → AmplitudeDamping (energy relaxation / T1)
-                       "t2"  → T2Dephasing      (phase decoherence / T2, default)
+                       "t2"  → Dephasing      (phase decoherence / T2, default)
 
         Returns:
             Dict mapping operation index (int) → KrausChannel instance,
@@ -221,7 +221,7 @@ class HardwareProfile:
             ValueError: If mode is not "t1" or "t2".
         """
         from .amplitude_damping import AmplitudeDamping
-        from .t2_dephasing import T2Dephasing
+        from .t2_dephasing import Dephasing
 
         if mode not in ("t1", "t2"):
             raise ValueError(f"mode must be 't1' or 't2', got {mode!r}")
@@ -236,7 +236,7 @@ class HardwareProfile:
             if mode == "t1":
                 noise[op_idx] = AmplitudeDamping(T1=self.t1, t=t_gate)
             else:
-                noise[op_idx] = T2Dephasing(T2=self.t2, t=t_gate)
+                noise[op_idx] = Dephasing(T2=self.t2, t=t_gate)
 
         return noise
 

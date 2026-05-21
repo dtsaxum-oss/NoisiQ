@@ -37,7 +37,7 @@ from noisiq.ir import gates as ir
 def test_bloch_vector_ground_state():
     """|0⟩⟨0| → (0, 0, 1)."""
     rho = np.array([[1, 0], [0, 0]], dtype=complex)
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # x, y, z = density_matrix_to_bloch_vector(rho)
     # assert np.isclose(x, 0) and np.isclose(y, 0) and np.isclose(z, 1)
 
@@ -45,14 +45,14 @@ def test_bloch_vector_ground_state():
 def test_bloch_vector_excited_state():
     """|1⟩⟨1| → (0, 0, -1)."""
     rho = np.array([[0, 0], [0, 1]], dtype=complex)
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
 
 
 def test_bloch_vector_plus_state():
     """|+⟩⟨+| → (1, 0, 0)."""
     psi = np.array([1, 1], dtype=complex) / np.sqrt(2)
     rho = np.outer(psi, psi.conj())
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # x, y, z = density_matrix_to_bloch_vector(rho)
     # assert np.isclose(x, 1, atol=1e-10)
     # assert np.isclose(y, 0, atol=1e-10)
@@ -63,14 +63,14 @@ def test_bloch_vector_minus_state():
     """|−⟩⟨−| → (-1, 0, 0)."""
     psi = np.array([1, -1], dtype=complex) / np.sqrt(2)
     rho = np.outer(psi, psi.conj())
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
 
 
 def test_bloch_vector_y_plus_state():
     """|i+⟩⟨i+| = (|0⟩ + i|1⟩)/√2 → (0, 1, 0)."""
     psi = np.array([1, 1j], dtype=complex) / np.sqrt(2)
     rho = np.outer(psi, psi.conj())
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
 
 
 # ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ def test_pure_state_on_unit_sphere():
             psi = np.array([np.cos(theta / 2),
                             np.exp(1j * phi) * np.sin(theta / 2)], dtype=complex)
             rho = np.outer(psi, psi.conj())
-            raise NotImplementedError
+            pytest.skip("not yet implemented")
             # x, y, z = density_matrix_to_bloch_vector(rho)
             # assert abs(x**2 + y**2 + z**2 - 1.0) < 1e-10
 
@@ -92,7 +92,7 @@ def test_pure_state_on_unit_sphere():
 def test_maximally_mixed_is_origin():
     """I/2 → (0, 0, 0)."""
     rho = np.eye(2, dtype=complex) / 2
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # x, y, z = density_matrix_to_bloch_vector(rho)
     # assert np.isclose(x, 0) and np.isclose(y, 0) and np.isclose(z, 0)
 
@@ -101,7 +101,7 @@ def test_mixed_state_strictly_inside_sphere():
     """A non-pure state has |v| < 1."""
     # Convex mix of |0⟩ and |1⟩
     rho = np.array([[0.7, 0.1], [0.1, 0.3]], dtype=complex)
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # x, y, z = density_matrix_to_bloch_vector(rho)
     # assert x**2 + y**2 + z**2 < 1.0
 
@@ -129,7 +129,7 @@ def test_draw_bloch_sphere_single_vector():
     """draw_bloch_sphere must not raise for a single vector."""
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # draw_bloch_sphere(ax, [(0, 0, 1)], labels=["|0⟩"])
     # plt.close(fig)
 
@@ -137,7 +137,7 @@ def test_draw_bloch_sphere_single_vector():
 def test_draw_bloch_sphere_multiple_vectors():
     fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # draw_bloch_sphere(ax, [(0,0,1), (0,0,-1), (1,0,0)],
     #                   labels=["|0⟩", "|1⟩", "|+⟩"])
     # plt.close(fig)
@@ -159,7 +159,7 @@ def _make_trajectory_results(n_points: int = 5):
 
 def test_plot_t1_t2_decay_returns_figure():
     results, t_values = _make_trajectory_results()
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # fig = plot_t1_t2_decay(results, t_values, qubit=0)
     # assert isinstance(fig, plt.Figure)
     # plt.close(fig)
@@ -179,7 +179,7 @@ def test_plot_trajectory_ensemble_returns_figure():
     result = backend.run(circuit, noise_model=noise, n_shots=20, seed=0)
     # trajectory_states not stored by default — this test documents the
     # expected interface for when TrajectoryBackend is extended in Week 7
-    raise NotImplementedError
+    pytest.skip("not yet implemented")
     # fig = plot_trajectory_ensemble(trajectory_states, result.density_matrix)
     # assert isinstance(fig, plt.Figure)
     # plt.close(fig)

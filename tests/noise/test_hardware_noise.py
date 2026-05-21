@@ -19,7 +19,7 @@ matplotlib.use("Agg")  # headless — no display required
 import noisiq as nq
 from noisiq.noise import (
     AmplitudeDamping,
-    T2Dephasing,
+    Dephasing,
     GHZResult,
     GateTimes,
     HardwareProfile,
@@ -110,7 +110,7 @@ def test_to_noise_model_t2_returns_correct_type(eagle_profile, simple_circuit):
     noise = eagle_profile.to_noise_model(simple_circuit, mode="t2")
     assert isinstance(noise, dict)
     assert len(noise) == len(simple_circuit.operations)
-    assert all(isinstance(v, T2Dephasing) for v in noise.values())
+    assert all(isinstance(v, Dephasing) for v in noise.values())
 
 
 def test_to_noise_model_t1_returns_amplitude_damping(eagle_profile, simple_circuit):
@@ -292,7 +292,7 @@ def test_plot_purity_decay_returns_figure():
     t_values = np.array([1e-9, 10e-9, 100e-9])
     results = []
     for t in t_values:
-        noise_1q = {0: T2Dephasing(T2=profile.t2, t=float(t))}
+        noise_1q = {0: Dephasing(T2=profile.t2, t=float(t))}
         r = TrajectoryBackend().run(circuit_1q, noise_model=noise_1q, n_shots=100, seed=0)
         results.append(r)
     fig = plot_purity_decay(results, t_values, title="Purity test")
@@ -303,7 +303,7 @@ def test_plot_purity_decay_returns_figure():
 def test_plot_purity_decay_length_mismatch_raises():
     circuit_1q = nq.Circuit(n_qubits=1).h(0)
     profile = get_hardware("ibm_eagle_r3")
-    noise_1q = {0: T2Dephasing(T2=profile.t2, t=1e-9)}
+    noise_1q = {0: Dephasing(T2=profile.t2, t=1e-9)}
     r = TrajectoryBackend().run(circuit_1q, noise_model=noise_1q, n_shots=50, seed=0)
     with pytest.raises(ValueError, match="same length"):
         plot_purity_decay([r], np.array([1e-9, 2e-9]))

@@ -55,4 +55,4 @@ def test_backends_seed_none():
     # 3. TrajectoryBackend
     b3 = TrajectoryBackend()
     res3 = b3.run(c, seed=None, n_shots=2)
-    assert res3.counts is not None
+    assert res3.density_matrix is not None

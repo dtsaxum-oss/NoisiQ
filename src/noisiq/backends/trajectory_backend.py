@@ -159,7 +159,10 @@ def _apply_kraus_to_qubit(
         float(np.real(np.dot(ket.conj(), ket))) for ket in outcomes
     ])
     probs = np.clip(probs, 0.0, None)
-    probs /= probs.sum()
+    total = probs.sum()
+    if total == 0.0:
+        return state  # unphysical channel — return state unchanged
+    probs /= total
 
     k = int(rng.choice(len(kraus_ops), p=probs))
     new_state = outcomes[k]
