@@ -3,7 +3,7 @@ import numpy as np
 from noisiq.ir import Circuit
 from noisiq.noise.amplitude_damping import AmplitudeDamping
 from noisiq.backends.trajectory_backend import TrajectoryBackend
-
+from noisiq.results import SimulationResult
 from noisiq.noise.kraus_channels import KrausChannel
 
 def test_t1_decay_curve():
@@ -23,10 +23,10 @@ def test_t1_decay_curve():
         
         # Expected probability of measuring 1 is exp(-t/T1)
         expected_p1 = np.exp(-t / T1)
-        
-        # Calculate measured probability of 1
-        p1 = res.counts.get("1", 0) / shots
-        
+
+        # Read P(|1⟩) directly from the density matrix via partial trace
+        p1 = res.excited_state_probability(0)
+
         # Allow 5% margin of error due to Monte Carlo sampling
         assert abs(p1 - expected_p1) < 0.05
 
@@ -34,18 +34,23 @@ def test_trajectory_underflow():
     # Test that the zero-probability fallback works in Kraus sampling
     c = Circuit(1)
     c.h(0)
-    
+
     # Create an unphysical Kraus channel with 0 matrices to force sum_p = 0
     k0 = np.zeros((2, 2), dtype=complex)
     k1 = np.zeros((2, 2), dtype=complex)
-    
+
+    class ZeroChannel(KrausChannel):
+        def describe(self) -> dict:
+            return {"channel": "zero"}
+
     import unittest.mock
     with unittest.mock.patch.object(KrausChannel, '_validate_operators'):
-        noise = KrausChannel(operators=[k0, k1])
-    
+        noise = ZeroChannel(operators=[k0, k1])
+
     backend = TrajectoryBackend()
     res = backend.run(c, noise_model=noise, n_shots=10, seed=42)
-    
-    # Should not crash, and should return counts
-    assert res.counts is not None
-    assert sum(res.counts.values()) == 10
+
+    # Should not crash and should return a SimulationResult with a density matrix
+    assert isinstance(res, SimulationResult)
+    assert res.final_state is not None
+    assert res.meta["n_shots"] == 10

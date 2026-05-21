@@ -69,12 +69,7 @@ class Visualizer:
             display(output)
             return
 
-        layer_to_frame = {}
-        for step in self.result.steps:
-            t = step.operation.t
-            idx = step.time_step
-            if idx < len(self.trajectories):
-                layer_to_frame[t] = self.trajectories[idx]
+        layer_to_frame = self.trajectories  # Dict[int, PauliFrame] keyed by t
 
         step_slider = widgets.IntSlider(
             value=0,

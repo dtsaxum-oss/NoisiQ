@@ -15,7 +15,8 @@ from .theme import (
     halo_color,
 )
 from . import charts
-from .charts import plot_error_heatmap, plot_qubit_error_bar, plot_fidelity_decay
+from .charts import plot_error_heatmap, plot_qubit_error_bar, plot_fidelity_decay, plot_hardware_comparison
+from .density_matrix import plot_density_matrix, plot_purity_decay, state_fidelity
 
 __all__ = [
     "draw_circuit",
@@ -33,4 +34,8 @@ __all__ = [
     "plot_error_heatmap",
     "plot_qubit_error_bar",
     "plot_fidelity_decay",
+    "plot_hardware_comparison",
+    "plot_density_matrix",
+    "plot_purity_decay",
+    "state_fidelity",
 ]

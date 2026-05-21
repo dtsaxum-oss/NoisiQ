@@ -10,8 +10,11 @@ class InvalidChannel(KrausChannel):
         K1 = np.array([[0, 0.5], [0, 0]], dtype=complex)
         super().__init__([K0, K1])
 
+    def describe(self) -> dict:
+        return {"channel": "invalid"}
+
 def test_kraus_validation():
-    with pytest.raises(ValueError, match="not trace-preserving"):
+    with pytest.raises(ValueError, match="trace preservation"):
         InvalidChannel()
 
 def test_amplitude_damping():
@@ -26,18 +29,19 @@ def test_amplitude_damping():
     assert np.allclose(ad.operators[1], np.array([[0, 1], [0, 0]]))
 
 def test_dephasing():
-    # t = 0
+    # t = 0: no dephasing (identity channel)
     de = Dephasing(T2=1.0, t=0.0)
     assert np.allclose(de.operators[0], np.eye(2))
     assert np.allclose(de.operators[1], np.zeros((2, 2)))
-    
-    # t -> infinity (complete dephasing, p -> 0.5)
+
+    # t -> infinity: complete dephasing (equal superposition destroyed)
     de = Dephasing(T2=1.0, t=100.0)
-    assert np.allclose(de.operators[0], np.sqrt(0.5) * np.eye(2))
-    assert np.allclose(de.operators[1], np.sqrt(0.5) * np.array([[1, 0], [0, -1]]))
-    
-    # Test T1 and Tphi constructor
+    assert np.allclose(de.operators[0], np.array([[1, 0], [0, 0]]), atol=1e-6)
+    assert np.allclose(de.operators[1], np.array([[0, 0], [0, 1]]), atol=1e-6)
+
+    # Intermediate case with T1 + Tphi
     de2 = Dephasing(t=1.0, T1=1.0, Tphi=1.0)
     rate = 1.0 / (2 * 1.0) + 1.0 / 1.0
-    expected_p = 0.5 * (1.0 - np.exp(-1.0 * rate))
-    assert np.allclose(de2.operators[0], np.sqrt(1 - expected_p) * np.eye(2))
+    lam = 1.0 - np.exp(-2.0 * 1.0 * rate)
+    assert np.allclose(de2.operators[0], np.array([[1, 0], [0, np.sqrt(1 - lam)]]))
+    assert np.allclose(de2.operators[1], np.array([[0, 0], [0, np.sqrt(lam)]]))

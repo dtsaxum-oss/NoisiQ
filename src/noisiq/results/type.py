@@ -30,16 +30,38 @@ class SimulationResult:
     meta: Optional[Dict[str, Any]] = None
 
     def excited_state_probability(self, qubit: int) -> float:
+        """Return P(|1⟩) for the given qubit.
+
+        For density-matrix results (final_state is 2-D), traces out all other
+        qubits and reads the [1,1] element of the reduced density matrix.
+        For shot-based results (counts is set), returns the fraction of shots
+        in which that qubit measured |1⟩.
         """
-        Calculate the probability of measuring the given qubit in the excited state (|1>).
-        """
+        if self.final_state is not None and self.final_state.ndim == 2:
+            import string
+            rho = self.final_state
+            n_qubits = int(np.log2(rho.shape[0]))
+            rho_t = rho.reshape([2] * (2 * n_qubits))
+            row_chars = list(string.ascii_lowercase[:n_qubits])
+            col_chars = list(string.ascii_uppercase[:n_qubits])
+            for q in range(n_qubits):
+                if q != qubit:
+                    col_chars[q] = row_chars[q]
+            einsum_str = (
+                "".join(row_chars) + "".join(col_chars)
+                + "->" + row_chars[qubit] + col_chars[qubit]
+            )
+            rho_q = np.einsum(einsum_str, rho_t)
+            return float(rho_q[1, 1].real)
+
         if self.counts is None:
-            raise ValueError("Cannot calculate probability without measurement counts.")
-        
+            raise ValueError(
+                "excited_state_probability requires either a density matrix "
+                "(final_state) or measurement counts."
+            )
         total_shots = sum(self.counts.values())
         if total_shots == 0:
             return 0.0
-            
         excited_shots = sum(
             count for bitstring, count in self.counts.items()
             if len(bitstring) > qubit and bitstring[qubit] == '1'
