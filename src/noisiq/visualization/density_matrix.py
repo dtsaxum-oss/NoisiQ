@@ -210,7 +210,7 @@ def plot_density_matrix(
 def plot_purity_decay(
     results: list[SimulationResult],
     t_values: np.ndarray,
-    labels: Optional[list[str]] = None,
+    label: Optional[str] = None,
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
 ) -> plt.Figure:
@@ -228,7 +228,7 @@ def plot_purity_decay(
                   entry in t_values. Each result.final_state must be a 2-D
                   density matrix.
         t_values: 1D array of time values in seconds.
-        labels:   Optional legend labels (one per curve).
+        label:    Optional legend label for the purity curve.
         title:    Optional Axes title.
         ax:       Existing Axes to draw on, or None to create a new Figure.
 
@@ -255,8 +255,7 @@ def plot_purity_decay(
     else:
         fig = ax.get_figure()
 
-    curve_label = labels[0] if labels else None
-    ax.plot(t_us, purities, marker="o", linewidth=1.8, markersize=5, label=curve_label)
+    ax.plot(t_us, purities, marker="o", linewidth=1.8, markersize=5, label=label)
     ax.axhline(
         min_purity,
         color="gray",
@@ -271,7 +270,7 @@ def plot_purity_decay(
     ax.set_xlim(left=0)
     if title:
         ax.set_title(title)
-    if labels:
+    if label:
         ax.legend()
 
     fig.tight_layout()
