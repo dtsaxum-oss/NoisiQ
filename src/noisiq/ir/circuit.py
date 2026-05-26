@@ -45,12 +45,20 @@ class Circuit:
     name: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
-    def add_gate(self, gate: gates.Gate, qubits: Qubits | List[int], t: Optional[int] = None):
+    def add_gate(
+        self,
+        gate: gates.Gate,
+        qubits: Qubits | List[int],
+        t: Optional[int] = None,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        meta: Optional[Dict[str, Any]] = None,
+    ):
         """
         Adds a gate operation to the circuit.
 
         Args:
-            gate:   The gate to add (e.g., gates.H).
+            gate:   The gate to add (e.g., gates.H, gates.IDLE).
             qubits: The qubit(s) the gate acts on.
             t:      Optional explicit time step (layer index).  When omitted,
                     the gate is auto-scheduled into the earliest available slot
@@ -58,6 +66,8 @@ class Circuit:
                     When provided, the gate is placed at exactly that t — but
                     a ValueError is raised if any qubit is already occupied at
                     that t by another gate.
+            params: Optional per-op parameters. For IDLE: {"duration_ns": float}.
+            meta:   Optional per-op metadata (free-form).
 
         Raises:
             ValueError: If the number of qubits provided does not match the
@@ -101,7 +111,7 @@ class Circuit:
                         f"'{existing.gate.name}' on {list(existing.qubits)} at t={t}."
                     )
 
-        op = Operation(gate=gate, qubits=qubits, t=t)
+        op = Operation(gate=gate, qubits=qubits, t=t, params=params, meta=meta)
         self.operations.append(op)
         return self
 
@@ -139,6 +149,20 @@ class Circuit:
     def identity(self, qubit: int, t: Optional[int] = None) -> "Circuit":
         return self.add_gate(gates.I, (qubit,), t=t)
 
+    def idle(self, qubit: int, duration_ns: float, t: Optional[int] = None) -> "Circuit":
+        """Insert an IDLE gate lasting duration_ns on qubit.
+
+        IDLE represents a qubit sitting idle while something else runs on
+        another qubit. Only T1/T2 decoherence accrues — no gate error.
+        duration_ns is required because it drives the noise model.
+        """
+        return self.add_gate(
+            gates.IDLE,
+            (qubit,),
+            t=t,
+            params={"duration_ns": float(duration_ns)},
+        )
+
     def cnot(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
         return self.add_gate(gates.CNOT, (control, target), t=t)
 
@@ -147,6 +171,26 @@ class Circuit:
 
     def cz(self, q1: int, q2: int, t: Optional[int] = None) -> "Circuit":
         return self.add_gate(gates.CZ, (q1, q2), t=t)
+
+    def swap(self, q1: int, q2: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.SWAP, (q1, q2), t=t)
+
+    def cs(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.CS, (control, target), t=t)
+
+    def cs_dag(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.CS_DAG, (control, target), t=t)
+
+    def ccz(self, q1: int, q2: int, q3: int, t: Optional[int] = None) -> "Circuit":
+        return self.add_gate(gates.CCZ, (q1, q2, q3), t=t)
+
+    def p(self, qubit: int, theta: float, t: Optional[int] = None) -> "Circuit":
+        """Phase gate P(θ) = [[1, 0], [0, e^{iθ}]]."""
+        return self.add_gate(gates.phase_gate(theta), (qubit,), t=t)
+
+    def rz(self, qubit: int, theta: float, t: Optional[int] = None) -> "Circuit":
+        """Rotation-Z gate RZ(θ) = [[e^{-iθ/2}, 0], [0, e^{iθ/2}]]."""
+        return self.add_gate(gates.rz_gate(theta), (qubit,), t=t)
 
     ## Removes name and metadata from printing if they're None, to reduce clutter
     def __repr__(self) -> str:

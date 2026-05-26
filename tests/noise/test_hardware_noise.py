@@ -307,3 +307,154 @@ def test_plot_purity_decay_length_mismatch_raises():
     r = TrajectoryBackend().run(circuit_1q, noise_model=noise_1q, n_shots=50, seed=0)
     with pytest.raises(ValueError, match="same length"):
         plot_purity_decay([r], np.array([1e-9, 2e-9]))
+
+
+# ===========================================================================
+# to_noise_model — representation kwarg (extended mode)
+# ===========================================================================
+
+from noisiq.noise.kraus_channels import CombinedChannel as _CombinedChannel
+from noisiq.noise.pauli_error import PauliError as _PauliError
+from noisiq.noise.amplitude_damping import AmplitudeDamping as _AmplitudeDamping
+from noisiq.noise.t2_dephasing import Dephasing as _Dephasing
+from noisiq.noise.coherent_errors import CoherentRotation as _CoherentRotation
+
+
+@pytest.fixture
+def heron_profile():
+    return get_hardware("ibm_heron_r2")
+
+
+@pytest.fixture
+def ghz_circuit_2q():
+    """2-qubit Bell circuit: H + CNOT."""
+    c = nq.Circuit(n_qubits=2)
+    c.h(0).cnot(0, 1)
+    return c
+
+
+def test_representation_none_backward_compatible(eagle_profile, simple_circuit):
+    """Default (representation=None) still returns one Dephasing per op."""
+    noise = eagle_profile.to_noise_model(simple_circuit, mode="t2")
+    assert all(isinstance(v, Dephasing) for v in noise.values())
+
+
+def test_representation_invalid_raises(eagle_profile, simple_circuit):
+    with pytest.raises(ValueError, match="representation must be"):
+        eagle_profile.to_noise_model(simple_circuit, mode="t2", representation="kraus")
+
+
+def test_pauli_twirl_returns_dict_same_length(eagle_profile, simple_circuit):
+    noise = eagle_profile.to_noise_model(simple_circuit, mode="t2", representation="pauli_twirl")
+    assert isinstance(noise, dict)
+    assert len(noise) == len(simple_circuit.operations)
+
+
+def test_coherent_returns_dict_same_length(eagle_profile, simple_circuit):
+    noise = eagle_profile.to_noise_model(simple_circuit, mode="t1", representation="coherent")
+    assert isinstance(noise, dict)
+    assert len(noise) == len(simple_circuit.operations)
+
+
+def test_pauli_twirl_values_contain_pauli_error(eagle_profile, ghz_circuit_2q):
+    """pauli_twirl representation must produce PauliError or CombinedChannel containing one."""
+    noise = eagle_profile.to_noise_model(ghz_circuit_2q, mode="t2", representation="pauli_twirl")
+    for v in noise.values():
+        if isinstance(v, _CombinedChannel):
+            types = [type(c) for c in v.channels]
+            assert _PauliError in types, f"Expected PauliError in CombinedChannel, got {types}"
+        else:
+            assert isinstance(v, _PauliError), f"Unexpected type {type(v)}"
+
+
+def test_coherent_1q_gate_uses_kraus_channel(eagle_profile, ghz_circuit_2q):
+    """coherent representation must include AmplitudeDamping or Dephasing for decoherence."""
+    noise = eagle_profile.to_noise_model(ghz_circuit_2q, mode="t1", representation="coherent")
+    for op_idx, op in enumerate(ghz_circuit_2q.operations):
+        v = noise[op_idx]
+        if isinstance(v, _CombinedChannel):
+            assert any(isinstance(c, _AmplitudeDamping) for c in v.channels), (
+                f"Expected AmplitudeDamping in CombinedChannel for op {op_idx}"
+            )
+        else:
+            assert isinstance(v, _AmplitudeDamping)
+
+
+def test_2q_gate_produces_combined_channel_with_spectator(heron_profile, ghz_circuit_2q):
+    """IBM Heron has spectator_error > 0 → coherent representation must include spectator channel."""
+    assert heron_profile.spectator_error_per_2q_gate > 0
+    noise = heron_profile.to_noise_model(ghz_circuit_2q, mode="t2", representation="coherent")
+    # CNOT is op_idx 1 (H at 0, CNOT at 1)
+    cnot_channel = noise[1]
+    # coherent representation wraps multiple channels in CombinedChannel
+    assert isinstance(cnot_channel, _CombinedChannel), (
+        f"Expected CombinedChannel for 2q gate with spectator error, got {type(cnot_channel)}"
+    )
+
+
+def test_idle_zz_adds_extra_channel_vs_no_idle(ghz_circuit_2q):
+    """IBM Eagle (idle_zz_rate_hz>0) injects one more channel per 2q gate than IonQ (idle_zz_rate_hz=0)."""
+    ionq = get_hardware("ionq_forte")
+    eagle = get_hardware("ibm_eagle_r3")
+    assert ionq.idle_zz_rate_hz == 0.0
+    assert eagle.idle_zz_rate_hz > 0.0
+
+    noise_ionq = ionq.to_noise_model(ghz_circuit_2q, mode="t2", representation="coherent")
+    noise_eagle = eagle.to_noise_model(ghz_circuit_2q, mode="t2", representation="coherent")
+
+    # CNOT is op_idx 1 in H+CNOT circuit
+    def channel_count(channel):
+        if isinstance(channel, _CombinedChannel):
+            return len(channel.channels)
+        return 1
+
+    cnot_ionq = channel_count(noise_ionq[1])
+    cnot_eagle = channel_count(noise_eagle[1])
+    assert cnot_eagle > cnot_ionq, (
+        f"Eagle (idle ZZ) should have more channels than IonQ (no idle ZZ): "
+        f"eagle={cnot_eagle}, ionq={cnot_ionq}"
+    )
+
+
+def test_ibm_eagle_has_idle_zz(ghz_circuit_2q):
+    """IBM Eagle has idle_zz_rate_hz=22000 → ZZ CoherentRotation present on 2q gate."""
+    eagle = get_hardware("ibm_eagle_r3")
+    assert eagle.idle_zz_rate_hz > 0
+    noise = eagle.to_noise_model(ghz_circuit_2q, mode="t2", representation="coherent")
+    cnot_channel = noise[1]
+    assert isinstance(cnot_channel, _CombinedChannel)
+    zz_channels = [c for c in cnot_channel.channels
+                   if isinstance(c, _CoherentRotation) and c.axis == 'ZZ']
+    assert len(zz_channels) >= 1, "Expected at least one ZZ CoherentRotation on IBM Eagle 2q gate"
+
+
+def test_representation_coherent_runs_trajectory(eagle_profile, ghz_circuit_2q):
+    """End-to-end: coherent noise model runs in TrajectoryBackend without error."""
+    noise = eagle_profile.to_noise_model(ghz_circuit_2q, mode="t1", representation="coherent")
+    result = TrajectoryBackend().run(ghz_circuit_2q, noise_model=noise, n_shots=200, seed=42)
+    rho = result.final_state
+    assert rho.shape == (4, 4)
+    assert np.isclose(np.trace(rho).real, 1.0, atol=1e-6)
+
+
+def test_representation_pauli_twirl_runs_trajectory(eagle_profile, ghz_circuit_2q):
+    """End-to-end: pauli_twirl noise model runs in TrajectoryBackend without error."""
+    noise = eagle_profile.to_noise_model(ghz_circuit_2q, mode="t2", representation="pauli_twirl")
+    result = TrajectoryBackend().run(ghz_circuit_2q, noise_model=noise, n_shots=200, seed=42)
+    rho = result.final_state
+    assert np.isclose(np.trace(rho).real, 1.0, atol=1e-6)
+
+
+def test_new_hardware_fields_present():
+    """All built-in profiles have the 4 new optional fields."""
+    for name in list_hardware():
+        p = get_hardware(name)
+        assert hasattr(p, 'idle_zz_rate_hz')
+        assert hasattr(p, 'coherent_fraction')
+        assert hasattr(p, 'spectator_error_per_2q_gate')
+        assert hasattr(p, 'mcmr_crosstalk')
+
+
+def test_quantinuum_has_mcmr_crosstalk():
+    q = get_hardware("quantinuum_h2")
+    assert q.mcmr_crosstalk > 0.0

@@ -69,3 +69,62 @@ def test_is_unitary_helper():
     assert not gates.is_unitary(np.array([[1, 0, 0], [0, 1, 0]]))
 
 
+@pytest.mark.parametrize(
+    "gate_instance, expected_name, expected_qubits, expected_shape",
+    [
+        (gates.SWAP,   "SWAP",   2, (4, 4)),
+        (gates.CS,     "CS",     2, (4, 4)),
+        (gates.CS_DAG, "CS_DAG", 2, (4, 4)),
+        (gates.CCZ,    "CCZ",    3, (8, 8)),
+    ],
+)
+def test_new_gates_are_valid(gate_instance, expected_name, expected_qubits, expected_shape):
+    assert isinstance(gate_instance, gates.Gate)
+    assert gate_instance.name == expected_name
+    assert gate_instance.num_qubits == expected_qubits
+    assert gate_instance.matrix.shape == expected_shape
+
+
+def test_swap_matrix_correct():
+    # SWAP|01⟩ = |10⟩ (MSB-first: index 01=1 → index 10=2)
+    psi_01 = np.array([0, 1, 0, 0], dtype=complex)
+    psi_10 = gates.SWAP.matrix @ psi_01
+    assert np.allclose(psi_10, [0, 0, 1, 0])
+
+
+def test_cs_matrix_phase():
+    # CS|11⟩ = i|11⟩  (|11⟩ is index 3 in MSB-first ordering)
+    psi_11 = np.array([0, 0, 0, 1], dtype=complex)
+    result = gates.CS.matrix @ psi_11
+    assert np.allclose(result, [0, 0, 0, 1j])
+
+
+def test_cs_cs_dag_inverse():
+    assert np.allclose(gates.CS.matrix @ gates.CS_DAG.matrix, np.eye(4))
+
+
+def test_ccz_matrix_phase():
+    # CCZ|111⟩ = -|111⟩  (|111⟩ is index 7)
+    psi_111 = np.array([0, 0, 0, 0, 0, 0, 0, 1], dtype=complex)
+    result = gates.CCZ.matrix @ psi_111
+    assert np.allclose(result, [0, 0, 0, 0, 0, 0, 0, -1])
+
+
+def test_phase_gate_factory():
+    gate = gates.phase_gate(np.pi / 2)
+    assert gate.name == "P(1.571)"
+    assert gate.num_qubits == 1
+    # P(π/2)|1⟩ = i|1⟩
+    psi_1 = np.array([0, 1], dtype=complex)
+    assert np.allclose(gate.matrix @ psi_1, [0, 1j])
+
+
+def test_rz_gate_factory():
+    gate = gates.rz_gate(np.pi)
+    assert gate.name == "RZ(3.142)"
+    assert gate.num_qubits == 1
+    # RZ(π) = -i * Z  (up to global phase); |RZ(π)| diag = [e^{-iπ/2}, e^{iπ/2}] = [-i, i]
+    expected = np.array([[-1j, 0], [0, 1j]], dtype=complex)
+    assert np.allclose(gate.matrix, expected)
+
+

@@ -94,11 +94,18 @@ class ManyShotRunner:
 
         circuit.validate()
 
-        # Check for non-Clifford gates since ManyShotRunner uses StimTableauBackend
+        _CLIFFORD_GATES = frozenset({
+            'H', 'X', 'Y', 'Z', 'S', 'S_DAG',
+            'CNOT', 'CX', 'CZ', 'SWAP',
+            'I', 'IDLE',
+        })
         for op in circuit.operations:
             name = op.gate.name.upper()
-            if name not in ['H', 'X', 'Y', 'Z', 'S', 'S_DAG', 'CNOT', 'CX', 'CZ', 'I']:
-                raise NotImplementedError(f"ManyShotRunner only supports Clifford circuits. Found non-Clifford gate: {name}")
+            if name not in _CLIFFORD_GATES:
+                raise NotImplementedError(
+                    f"ManyShotRunner only supports Clifford circuits. "
+                    f"Found non-Clifford gate: {op.gate.name}"
+                )
 
         n_qubits = circuit.n_qubits
         n_ops = len(circuit.operations)

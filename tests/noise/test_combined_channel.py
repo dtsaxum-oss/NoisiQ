@@ -1,138 +1,110 @@
 """
-Tests for CombinedChannel.
+Tests for CombinedChannel (noisiq.noise.kraus_channels).
 
 Covers:
-- Construction: Kraus-only and Kraus+Pauli
-- validate() delegates to the KrausChannel
-- pauli_error() returns None when no Pauli layer; PauliError when set
-- sample_pauli() returns None when no Pauli layer; valid character when set
-- describe() keys match the layers present
-- Combined channel produces higher error rate than Kraus alone
-  (trajectory simulation: fidelity drops more when Pauli layer is added)
+- Construction: single channel, multiple channels, empty raises
+- .channels stores items in order
+- .describe() structure
+- __repr__ string
+- Backend integration: sequential application via _dispatch_channel
 """
 
 import pytest
 import numpy as np
 
+from noisiq.noise.kraus_channels import CombinedChannel
 from noisiq.noise.amplitude_damping import AmplitudeDamping
 from noisiq.noise.t2_dephasing import Dephasing
-from noisiq.noise.pauli_channels import DepolarizingChannel, DephaseChannel
-from noisiq.noise.combined_channel import CombinedChannel
+from noisiq.noise.pauli_error import PauliError, depolarizing_error
+from noisiq.noise.coherent_errors import CoherentRotation
+from noisiq.noise.correlated_errors import CorrelatedPauliError
 from noisiq.ir import Circuit
 from noisiq.ir import gates as ir
 from noisiq.backends.trajectory_backend import TrajectoryBackend
 
 
 # ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def kraus_only():
-    return CombinedChannel(kraus_channel=AmplitudeDamping(T1=1e-6, t=0.5e-6))
-
-
-@pytest.fixture
-def kraus_and_pauli():
-    return CombinedChannel(
-        kraus_channel=AmplitudeDamping(T1=1e-6, t=0.5e-6),
-        pauli_channel=DepolarizingChannel(p=0.05),
-    )
-
-
-# ---------------------------------------------------------------------------
 # Construction
 # ---------------------------------------------------------------------------
 
-def test_kraus_only_construction(kraus_only):
-    pytest.skip("not yet implemented")
+def test_single_channel_construction():
+    ch = CombinedChannel([AmplitudeDamping(T1=1e-6, t=0.5e-6)])
+    assert len(ch.channels) == 1
 
 
-def test_kraus_and_pauli_construction(kraus_and_pauli):
-    pytest.skip("not yet implemented")
+def test_multiple_channels_construction():
+    ch = CombinedChannel([
+        AmplitudeDamping(T1=1e-6, t=0.5e-6),
+        Dephasing(T2=2e-6, t=0.5e-6),
+    ])
+    assert len(ch.channels) == 2
 
 
-def test_pauli_channel_defaults_to_none():
-    ch = CombinedChannel(kraus_channel=AmplitudeDamping(T1=1e-6, t=0.1e-6))
-    assert ch.pauli_channel is None
+def test_empty_channels_raises():
+    with pytest.raises(ValueError, match="at least one"):
+        CombinedChannel([])
 
 
-# ---------------------------------------------------------------------------
-# validate()
-# ---------------------------------------------------------------------------
-
-def test_validate_passes_for_valid_kraus(kraus_only):
-    # Must not raise
-    pytest.skip("not yet implemented")
-
-
-def test_validate_passes_with_pauli_layer(kraus_and_pauli):
-    pytest.skip("not yet implemented")
+def test_channels_stored_in_order():
+    ad = AmplitudeDamping(T1=1e-6, t=0.5e-6)
+    dep = depolarizing_error(p=0.01)
+    ch = CombinedChannel([ad, dep])
+    assert ch.channels[0] is ad
+    assert ch.channels[1] is dep
 
 
-# ---------------------------------------------------------------------------
-# pauli_error()
-# ---------------------------------------------------------------------------
-
-def test_pauli_error_returns_none_when_no_pauli(kraus_only):
-    pytest.skip("not yet implemented")
-
-
-def test_pauli_error_returns_pauli_error_when_set(kraus_and_pauli):
-    err = kraus_and_pauli.pauli_error()
-    pytest.skip("not yet implemented")
-
-
-# ---------------------------------------------------------------------------
-# sample_pauli()
-# ---------------------------------------------------------------------------
-
-def test_sample_pauli_returns_none_when_no_pauli(kraus_only):
-    rng = np.random.default_rng(0)
-    pytest.skip("not yet implemented")
-
-
-def test_sample_pauli_returns_valid_character(kraus_and_pauli):
-    rng = np.random.default_rng(42)
-    for _ in range(20):
-        result = kraus_and_pauli.sample_pauli(rng)
-        pytest.skip("not yet implemented")
-
-
-def test_sample_pauli_deterministic_at_p1():
-    """DepolarizingChannel(p=0) → always 'I'."""
-    ch = CombinedChannel(
-        kraus_channel=AmplitudeDamping(T1=1e-6, t=1e-9),
-        pauli_channel=DepolarizingChannel(p=0.0),
-    )
-    rng = np.random.default_rng(0)
-    for _ in range(10):
-        pytest.skip("not yet implemented")
+def test_heterogeneous_channels_accepted():
+    """CombinedChannel accepts mixed types without raising."""
+    ch = CombinedChannel([
+        AmplitudeDamping(T1=1e-6, t=0.5e-6),
+        depolarizing_error(p=0.01),
+        CoherentRotation(axis='Z', epsilon=0.05),
+        CorrelatedPauliError({'ZZ': 0.01}),
+    ])
+    assert len(ch.channels) == 4
 
 
 # ---------------------------------------------------------------------------
-# describe()
+# describe() / repr
 # ---------------------------------------------------------------------------
 
-def test_describe_kraus_only_has_no_pauli_key(kraus_only):
-    d = kraus_only.describe()
-    pytest.skip("not yet implemented")
+def test_describe_type_key():
+    ch = CombinedChannel([AmplitudeDamping(T1=1e-6, t=0.5e-6)])
+    d = ch.describe()
+    assert d["type"] == "CombinedChannel"
 
 
-def test_describe_combined_has_both_keys(kraus_and_pauli):
-    d = kraus_and_pauli.describe()
-    pytest.skip("not yet implemented")
+def test_describe_n_channels():
+    channels = [AmplitudeDamping(T1=1e-6, t=0.5e-6), Dephasing(T2=2e-6, t=0.5e-6)]
+    ch = CombinedChannel(channels)
+    assert ch.describe()["n_channels"] == 2
+
+
+def test_describe_channels_list_length():
+    channels = [AmplitudeDamping(T1=1e-6, t=0.5e-6), Dephasing(T2=2e-6, t=0.5e-6)]
+    ch = CombinedChannel(channels)
+    assert len(ch.describe()["channels"]) == 2
+
+
+def test_repr_contains_class_name():
+    ch = CombinedChannel([AmplitudeDamping(T1=1e-6, t=0.5e-6)])
+    assert "CombinedChannel" in repr(ch)
+
+
+def test_repr_contains_inner_type():
+    ch = CombinedChannel([AmplitudeDamping(T1=1e-6, t=0.5e-6)])
+    assert "AmplitudeDamping" in repr(ch)
 
 
 # ---------------------------------------------------------------------------
-# Physics: combined channel degrades fidelity more than Kraus alone
+# Backend integration: CombinedChannel applies channels in order
 # ---------------------------------------------------------------------------
 
-def test_combined_increases_error_vs_kraus_only():
-    """Adding a Pauli layer on top of T1 damping must reduce P(|1⟩) further.
+def test_combined_applies_both_channels():
+    """Adding depolarizing on top of T1 damping must reduce P(|1⟩) further.
 
-    With T1 damping only, P(|1⟩) = exp(-t/T1) ≈ 0.61 at t=T1/2.
-    Adding depolarizing noise (p=0.3) mixes the state more, so P(|1⟩) < 0.61.
+    With T1 only: P(|1⟩) = exp(-t/T1) ≈ 0.61 at t=T1/2.
+    With depolarizing(p=0.4) added: mixed more, P(|1⟩) < 0.61.
     """
     circuit = Circuit(n_qubits=1)
     circuit.add_gate(ir.X, qubits=[0])
@@ -140,20 +112,55 @@ def test_combined_increases_error_vs_kraus_only():
     T1, t = 1e-6, 0.5e-6
     backend = TrajectoryBackend()
 
-    # Kraus only
-    ch_kraus = CombinedChannel(kraus_channel=AmplitudeDamping(T1=T1, t=t))
-    r_kraus = backend.run(circuit, noise_model=ch_kraus, n_shots=2000, seed=0)
-
-    # Kraus + Pauli
-    ch_combined = CombinedChannel(
-        kraus_channel=AmplitudeDamping(T1=T1, t=t),
-        pauli_channel=DepolarizingChannel(p=0.3),
+    r_kraus = backend.run(
+        circuit,
+        noise_model=AmplitudeDamping(T1=T1, t=t),
+        n_shots=4000,
+        seed=0,
     )
-    r_combined = backend.run(circuit, noise_model=ch_combined, n_shots=2000, seed=0)
+    r_combined = backend.run(
+        circuit,
+        noise_model=CombinedChannel([
+            AmplitudeDamping(T1=T1, t=t),
+            depolarizing_error(p=0.4),
+        ]),
+        n_shots=4000,
+        seed=0,
+    )
 
-    pytest.skip("not yet implemented")
-    # p_kraus = r_kraus.excited_state_probability(qubit=0)
-    # p_combined = r_combined.excited_state_probability(qubit=0)
-    # assert p_combined < p_kraus, (
-    #     f"Expected combined < kraus, got combined={p_combined:.4f} kraus={p_kraus:.4f}"
-    # )
+    p_kraus = float(np.real(r_kraus.final_state[1, 1]))
+    p_combined = float(np.real(r_combined.final_state[1, 1]))
+    assert p_combined < p_kraus, (
+        f"Expected combined < kraus-only: combined={p_combined:.4f} kraus={p_kraus:.4f}"
+    )
+
+
+def test_combined_with_correlated_pauli():
+    """CombinedChannel containing CorrelatedPauliError runs without error."""
+    circuit = Circuit(n_qubits=2)
+    circuit.add_gate(ir.H, qubits=[0])
+    circuit.add_gate(ir.CNOT, qubits=[0, 1])
+
+    backend = TrajectoryBackend()
+    ch = CombinedChannel([
+        Dephasing(T2=2e-6, t=50e-9),
+        CorrelatedPauliError({'ZZ': 0.01}),
+    ])
+    result = backend.run(circuit, noise_model=ch, n_shots=100, seed=42)
+    rho = result.final_state
+    assert rho.shape == (4, 4)
+    assert np.isclose(np.trace(rho).real, 1.0, atol=1e-6)
+
+
+def test_nested_combined_channel():
+    """CombinedChannel inside CombinedChannel is dispatched recursively."""
+    inner = CombinedChannel([AmplitudeDamping(T1=1e-6, t=0.1e-6)])
+    outer = CombinedChannel([inner, depolarizing_error(p=0.01)])
+
+    circuit = Circuit(n_qubits=1)
+    circuit.add_gate(ir.X, qubits=[0])
+
+    backend = TrajectoryBackend()
+    result = backend.run(circuit, noise_model=outer, n_shots=200, seed=7)
+    rho = result.final_state
+    assert np.isclose(np.trace(rho).real, 1.0, atol=1e-6)

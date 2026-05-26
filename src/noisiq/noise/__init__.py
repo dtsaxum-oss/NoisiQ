@@ -15,9 +15,11 @@ from .pauli_channels import (
     PauliChannel,
     PhaseFlipChannel,
 )
-from .kraus_channels import KrausChannel
+from .kraus_channels import KrausChannel, CombinedChannel
 from .amplitude_damping import AmplitudeDamping
 from .t2_dephasing import Dephasing
+from .coherent_errors import CoherentRotation
+from .correlated_errors import CorrelatedPauliError
 from .hardware_noise import (
     GHZResult,
     GateTimes,
@@ -26,6 +28,7 @@ from .hardware_noise import (
     list_hardware,
     register_hardware,
 )
+from .idle_fill import fill_idle_with_identities, idle_kraus, idle_pauli_twirl
 
 __all__ = [
     # Low-level Pauli error dataclass + factory functions
@@ -41,8 +44,12 @@ __all__ = [
     "PhaseFlipChannel",
     # Kraus channel base class and non-Pauli channels
     "KrausChannel",
+    "CombinedChannel",
     "AmplitudeDamping",
     "Dephasing",
+    # Coherent and correlated error channels
+    "CoherentRotation",
+    "CorrelatedPauliError",
     # Hardware profiles and registry
     "GHZResult",
     "GateTimes",
@@ -50,4 +57,8 @@ __all__ = [
     "get_hardware",
     "list_hardware",
     "register_hardware",
+    # Idle-slot filler and standalone idle channel builders
+    "fill_idle_with_identities",
+    "idle_kraus",
+    "idle_pauli_twirl",
 ]

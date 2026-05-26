@@ -13,9 +13,17 @@ from typing import Dict, Optional, Union
 import numpy as np
 
 from ..ir.circuit import Circuit
-from ..noise.kraus_channels import KrausChannel
+from ..noise.kraus_channels import KrausChannel, CombinedChannel
 from ..noise.pauli_error import PauliError
+from ..noise.correlated_errors import CorrelatedPauliError
 from ..results import SimulationResult
+
+# Pauli matrices for CorrelatedPauliError application
+_PAULI_MATRICES: dict[str, "np.ndarray"] = {
+    'X': np.array([[0, 1], [1, 0]], dtype=complex),
+    'Y': np.array([[0, -1j], [1j, 0]], dtype=complex),
+    'Z': np.array([[1, 0], [0, -1]], dtype=complex),
+}
 
 
 
@@ -92,29 +100,31 @@ def _apply_gate_to_state(
     return psi.reshape(-1)
 
 
-def _apply_kraus_to_qubit(
+def _sample_and_apply_kraus(
     state: np.ndarray,
     kraus_ops: list[np.ndarray],
-    qubit: int,
+    qubits: list[int],
     n_qubits: int,
     rng: np.random.Generator,
 ) -> np.ndarray:
-    """Sample one Kraus operator for a single qubit and apply it, then renormalize.
+    """Sample one Kraus operator acting on the given qubits and apply it.
 
-    Sampling weight for operator K_k is ||K_k |ψ⟩_q||².
+    Works for any number of target qubits (single- or multi-qubit Kraus
+    channels). Sampling weight for operator K_k is ||K_k |ψ⟩||².
 
     Args:
-        state:      Current statevector.
-        kraus_ops:  List of 2x2 Kraus operator matrices.
-        qubit:      Qubit index the channel acts on.
-        n_qubits:   Total number of qubits.
-        rng:        NumPy random generator for operator selection.
+        state:      Current statevector of shape (2^n,).
+        kraus_ops:  Kraus operator matrices, each of shape (2^k, 2^k)
+                    where k = len(qubits).
+        qubits:     Qubit indices the channel acts on.
+        n_qubits:   Total number of qubits in the circuit.
+        rng:        NumPy random generator.
 
     Returns:
         Normalized statevector after applying the sampled Kraus operator.
     """
     outcomes = [
-        _apply_gate_to_state(state, K, [qubit], n_qubits) for K in kraus_ops
+        _apply_gate_to_state(state, K, qubits, n_qubits) for K in kraus_ops
     ]
     probs = np.array([
         float(np.real(np.dot(ket.conj(), ket))) for ket in outcomes
@@ -129,6 +139,79 @@ def _apply_kraus_to_qubit(
     new_state = outcomes[k]
     norm = float(np.sqrt(np.real(np.dot(new_state.conj(), new_state))))
     return new_state / norm
+
+
+def _apply_kraus_to_qubit(
+    state: np.ndarray,
+    kraus_ops: list[np.ndarray],
+    qubit: int,
+    n_qubits: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Single-qubit convenience wrapper around _sample_and_apply_kraus."""
+    return _sample_and_apply_kraus(state, kraus_ops, [qubit], n_qubits, rng)
+
+
+def _dispatch_channel(
+    state: np.ndarray,
+    channel,
+    op_qubits: tuple,
+    n_qubits: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Apply one noise channel to a statevector, dispatching on channel type.
+
+    Handles KrausChannel (single- and multi-qubit), CorrelatedPauliError,
+    PauliError, and CombinedChannel (recursively applied in order).
+
+    Args:
+        state:      Current statevector of shape (2^n,).
+        channel:    Noise channel object to apply.
+        op_qubits:  Qubits the parent gate acts on (used to resolve target qubits
+                    for per-op channels).
+        n_qubits:   Total number of qubits in the circuit.
+        rng:        NumPy random generator.
+
+    Returns:
+        Updated statevector after applying the channel.
+    """
+    if isinstance(channel, CombinedChannel):
+        for inner in channel.channels:
+            state = _dispatch_channel(state, inner, op_qubits, n_qubits, rng)
+
+    elif isinstance(channel, KrausChannel):
+        # Detect qubit-count from operator shape: 2x2 → 1-qubit, 4x4 → 2-qubit, etc.
+        n_chan_qubits = int(round(np.log2(channel.operators[0].shape[0])))
+        if n_chan_qubits == 1:
+            # Per-qubit channel: apply independently to each qubit of the operation.
+            for qubit in op_qubits:
+                state = _apply_kraus_to_qubit(
+                    state, channel.operators, qubit, n_qubits, rng
+                )
+        else:
+            # Multi-qubit channel: apply jointly to the first n_chan_qubits of the op.
+            target_qubits = list(op_qubits)[:n_chan_qubits]
+            state = _sample_and_apply_kraus(
+                state, channel.operators, target_qubits, n_qubits, rng
+            )
+
+    elif isinstance(channel, CorrelatedPauliError):
+        pauli_str = channel.sample(rng)
+        for pauli_char, qubit in zip(pauli_str, op_qubits):
+            if pauli_char != 'I':
+                state = _apply_gate_to_state(
+                    state, _PAULI_MATRICES[pauli_char], [qubit], n_qubits
+                )
+
+    elif isinstance(channel, PauliError):
+        for qubit in op_qubits:
+            pauli = channel.sample(rng)
+            if pauli != 'I':
+                state = _apply_gate_to_state(
+                    state, channel.get_operator(pauli).matrix, [qubit], n_qubits
+                )
+
+    return state
 
 
 class TrajectoryBackend:
@@ -150,7 +233,7 @@ class TrajectoryBackend:
     def run(
         self,
         circuit: Circuit,
-        noise_model: Union[KrausChannel, PauliError, Dict[int, Union[KrausChannel, PauliError]], None] = None,
+        noise_model: Union[KrausChannel, PauliError, CorrelatedPauliError, CombinedChannel, Dict[int, Union[KrausChannel, PauliError, CorrelatedPauliError, CombinedChannel]], None] = None,
         n_shots: int = 500,
         seed: Optional[int] = None,
     ) -> SimulationResult:
@@ -187,8 +270,9 @@ class TrajectoryBackend:
                 f"memory-efficient Pauli-frame backends."
             )
 
-        noise_dict: Dict[int, Union[KrausChannel, PauliError]] = {}
-        if isinstance(noise_model, (KrausChannel, PauliError)):
+        _channel_types = (KrausChannel, PauliError, CorrelatedPauliError, CombinedChannel)
+        noise_dict: Dict[int, object] = {}
+        if isinstance(noise_model, _channel_types):
             noise_dict = {i: noise_model for i in range(len(circuit.operations))}
         elif isinstance(noise_model, dict):
             noise_dict = noise_model
@@ -204,24 +288,15 @@ class TrajectoryBackend:
             state = np.zeros(dim, dtype=complex)
             state[0] = 1.0  # Start in |00...0⟩
 
-            for op_idx, op in enumerate(circuit.operations):
+            for op_idx, op in sorted(enumerate(circuit.operations),
+                                     key=lambda kv: (kv[1].t, kv[0])):
                 state = _apply_gate_to_state(
                     state, op.gate.matrix, list(op.qubits), n
                 )
                 if op_idx in noise_dict:
-                    channel = noise_dict[op_idx]
-                    if isinstance(channel, KrausChannel):
-                        for qubit in op.qubits:
-                            state = _apply_kraus_to_qubit(
-                                state, channel.operators, qubit, n, shot_rng
-                            )
-                    elif isinstance(channel, PauliError):
-                        for qubit in op.qubits:
-                            pauli = channel.sample(shot_rng)
-                            if pauli != 'I':
-                                state = _apply_gate_to_state(
-                                    state, channel.get_operator(pauli).matrix, [qubit], n
-                                )
+                    state = _dispatch_channel(
+                        state, noise_dict[op_idx], op.qubits, n, shot_rng
+                    )
 
             rho_sum += np.outer(state, state.conj())
 

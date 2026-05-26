@@ -64,6 +64,14 @@ I = Gate(
     matrix=np.array([[1, 0], [0, 1]], dtype=complex),
 )
 
+# Same unitary as I but distinct object — noise-model builders branch on
+# `op.gate is IDLE` to apply only T1/T2 decoherence, never gate error.
+IDLE = Gate(
+    name="IDLE",
+    num_qubits=1,
+    matrix=np.array([[1, 0], [0, 1]], dtype=complex),
+)
+
 X = Gate(
     name="X",
     num_qubits=1,
@@ -143,4 +151,98 @@ CZ = Gate(
         dtype=complex,
     ),
 )
+
+SWAP = Gate(
+    name="SWAP",
+    num_qubits=2,
+    matrix=np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 0, 1, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1],
+        ],
+        dtype=complex,
+    ),
+)
+
+# Controlled-S: applies S on the target qubit when control is |1⟩.
+# Matrix = diag(1, 1, 1, i).  Clifford gate — stim calls this SQRT_CZ.
+CS = Gate(
+    name="CS",
+    num_qubits=2,
+    matrix=np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1j],
+        ],
+        dtype=complex,
+    ),
+)
+
+CS_DAG = Gate(
+    name="CS_DAG",
+    num_qubits=2,
+    matrix=np.array(
+        [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, -1j],
+        ],
+        dtype=complex,
+    ),
+)
+
+# --- Three-Qubit Gates ---
+
+# CCZ (Controlled-Controlled-Z): applies Z on the target only when both
+# controls are |1⟩.  Not Clifford — routes to TsimBackend / TrajectoryBackend.
+CCZ = Gate(
+    name="CCZ",
+    num_qubits=3,
+    matrix=np.diag([1, 1, 1, 1, 1, 1, 1, -1]).astype(complex),
+)
+
+
+# ==============================================================================
+# Parameterized Gate Factories
+# ==============================================================================
+
+def phase_gate(theta: float) -> Gate:
+    """Return P(θ) = [[1, 0], [0, e^{iθ}]] — the standard phase gate.
+
+    S  = phase_gate(π/2), T  = phase_gate(π/4), Z = phase_gate(π).
+    These are NOT Clifford for arbitrary θ; the Clifford-only backends
+    (StimTableauBackend, ManyShotRunner) will raise NonCliffordError.
+
+    Args:
+        theta: Phase angle in radians.
+
+    Returns:
+        Gate with name "P(θ)" rounded to 4 significant figures.
+    """
+    matrix = np.array([[1, 0], [0, np.exp(1j * theta)]], dtype=complex)
+    return Gate(name=f"P({theta:.4g})", num_qubits=1, matrix=matrix)
+
+
+def rz_gate(theta: float) -> Gate:
+    """Return RZ(θ) = [[e^{-iθ/2}, 0], [0, e^{iθ/2}]] — rotation about Z.
+
+    Differs from P(θ) by a global phase: RZ(θ) = e^{-iθ/2} P(θ).
+    Not Clifford for arbitrary θ.
+
+    Args:
+        theta: Rotation angle in radians.
+
+    Returns:
+        Gate with name "RZ(θ)" rounded to 4 significant figures.
+    """
+    matrix = np.array(
+        [[np.exp(-1j * theta / 2), 0], [0, np.exp(1j * theta / 2)]],
+        dtype=complex,
+    )
+    return Gate(name=f"RZ({theta:.4g})", num_qubits=1, matrix=matrix)
 

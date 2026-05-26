@@ -1,6 +1,10 @@
 from . import gates
 from .circuit import Circuit, Operation
-from .gates import CNOT, CZ, H, I, S, S_DAG, T, T_DAG, X, Y, Z, Gate
+from .gates import (
+    CNOT, CS, CS_DAG, CCZ, CX, CZ, H, I, IDLE,
+    S, S_DAG, SWAP, T, T_DAG, X, Y, Z, Gate,
+    phase_gate, rz_gate,
+)
 
 __all__ = [
     # submodule
@@ -11,6 +15,7 @@ __all__ = [
     # from gates.py
     "Gate",
     "I",
+    "IDLE",
     "X",
     "Y",
     "Z",
@@ -20,5 +25,13 @@ __all__ = [
     "T",
     "T_DAG",
     "CNOT",
+    "CX",
     "CZ",
+    "SWAP",
+    "CS",
+    "CS_DAG",
+    "CCZ",
+    # factories
+    "phase_gate",
+    "rz_gate",
 ]

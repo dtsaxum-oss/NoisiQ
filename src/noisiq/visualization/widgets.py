@@ -18,6 +18,12 @@ from .drawer import draw_circuit_with_labels
 from .pauli_frame_tracker import compute_error_trajectories
 from .animation import CircuitAnimator
 from .gate_info import GateInfoExtractor
+from .theme import (
+    CIRCUIT_WIDTH_PER_LAYER,
+    CIRCUIT_HEIGHT_PER_QUBIT,
+    CIRCUIT_MIN_WIDTH,
+    CIRCUIT_BASE_HEIGHT_PAD,
+)
 
 
 class Visualizer:
@@ -32,7 +38,7 @@ class Visualizer:
         self.many_shot_result: Optional[AggregateResult] = None
         self.trajectories = []
 
-    def simulate(self, noise_config=None, seed=None) -> StimTableauResult:
+    def run_single(self, noise_config=None, seed=None) -> StimTableauResult:
         """Run a single-shot simulation and store the result."""
         self.result = self.backend.run_single_shot(self.circuit, noise_config, seed)
         self.trajectories = compute_error_trajectories(self.circuit, self.result)
@@ -53,7 +59,7 @@ class Visualizer:
     def show(self) -> None:
         """Display interactive step-through widget (single-shot)."""
         if self.result is None:
-            print("Please run simulate() first.")
+            print("Please run run_single() first.")
             return
 
         layers = sorted(set(op.t for op in self.circuit.operations))
@@ -61,7 +67,11 @@ class Visualizer:
 
         if not layers:
             with output:
-                fig, ax = plt.subplots(figsize=(10, 0.8 * self.circuit.n_qubits + 1))
+                n_layers = (max(op.t for op in self.circuit.operations) + 1) if self.circuit.operations else 1
+                fig, ax = plt.subplots(figsize=(
+                    max(CIRCUIT_MIN_WIDTH, CIRCUIT_WIDTH_PER_LAYER * n_layers),
+                    CIRCUIT_HEIGHT_PER_QUBIT * self.circuit.n_qubits + CIRCUIT_BASE_HEIGHT_PAD,
+                ))
                 draw_circuit_with_labels(ax, self.circuit, pauli_frame=None, highlight_t=0)
                 display(fig)
                 plt.close(fig)
@@ -85,7 +95,11 @@ class Visualizer:
             frame = layer_to_frame.get(t)
             with output:
                 output.clear_output(wait=True)
-                fig, ax = plt.subplots(figsize=(10, 0.8 * self.circuit.n_qubits + 1))
+                n_layers = (max(op.t for op in self.circuit.operations) + 1) if self.circuit.operations else 1
+                fig, ax = plt.subplots(figsize=(
+                    max(CIRCUIT_MIN_WIDTH, CIRCUIT_WIDTH_PER_LAYER * n_layers),
+                    CIRCUIT_HEIGHT_PER_QUBIT * self.circuit.n_qubits + CIRCUIT_BASE_HEIGHT_PAD,
+                ))
                 draw_circuit_with_labels(
                     ax, self.circuit, pauli_frame=frame, highlight_t=t,
                 )
@@ -100,7 +114,7 @@ class Visualizer:
     def animate(self) -> None:
         """Display the full animation with play/pause/step controls."""
         if self.result is None:
-            print("Please run simulate() first.")
+            print("Please run run_single() first.")
             return
         animator = CircuitAnimator(self.circuit, self.result, self.trajectories)
         animator.show()
@@ -108,7 +122,7 @@ class Visualizer:
     def export_animation(self, filename: str, fps: int = 5) -> None:
         """Export the animation to a GIF or HTML file."""
         if self.result is None:
-            print("Please run simulate() first.")
+            print("Please run run_single() first.")
             return
         from .export import export_gif, export_html
 

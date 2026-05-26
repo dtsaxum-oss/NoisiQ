@@ -171,6 +171,8 @@ def plot_density_matrix(
     Raises:
         ValueError: If rho is not square or its dimension is not a power of 2.
     """
+    if hasattr(rho, "final_state"):
+        rho = rho.final_state
     d = rho.shape[0]
     if rho.ndim != 2 or rho.shape[1] != d:
         raise ValueError(f"rho must be square, got shape {rho.shape}")

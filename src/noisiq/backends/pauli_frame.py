@@ -103,7 +103,8 @@ class StimTableauBackend:
             sim = stim.TableauSimulator()
             steps: List[StepResult] = []
             
-            for op_idx, op in enumerate(circuit.operations):
+            for op_idx, op in sorted(enumerate(circuit.operations),
+                                     key=lambda kv: (kv[1].t, kv[0])):
                 # 1. Apply the ideal gate
                 self._apply_gate_to_sim(sim, op)
                 
@@ -195,8 +196,12 @@ class StimTableauBackend:
             sim.cnot(*op.qubits)
         elif name == 'CZ':
             sim.cz(*op.qubits)
+        elif name == 'SWAP':
+            sim.swap(*op.qubits)
         elif name == 'I':
-            pass # Identity does nothing in TableauSimulator
+            pass  # Identity does nothing in TableauSimulator
+        elif name == 'IDLE':
+            pass  # State evolution is identity; noise is handled by the noise model
         else:
             raise NonCliffordError(
                 f"Gate {name} not supported by StimTableauBackend. "

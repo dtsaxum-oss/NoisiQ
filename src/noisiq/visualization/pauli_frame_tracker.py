@@ -96,7 +96,7 @@ class PauliFrame:
             self.apply_cnot(qubits[0], qubits[1])
         elif gate == 'CZ':
             self.apply_cz(qubits[0], qubits[1])
-        elif gate in ['X', 'Y', 'Z', 'I']:
+        elif gate in ['X', 'Y', 'Z', 'I', 'IDLE']:
             pass
         elif gate == 'T':
             raise NotImplementedError("T gate is not a Clifford gate and cannot be tracked efficiently by PauliFrame.")

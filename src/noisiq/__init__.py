@@ -4,7 +4,7 @@ NoisiQ: Noise-Aware Quantum Circuit Simulation and Visualization
 __version__ = "0.1.0"
 
 # Import subpackages so users can access them like `noisiq.ir` or `noisiq.results`
-from . import backends, ir, noise, results, visualization
+from . import backends, io, ir, noise, results, suppression, visualization
 
 # Import the most common classes to the top-level for convenience,
 # allowing users to write `noisiq.Circuit` instead of `noisiq.ir.circuit.Circuit`.
@@ -20,6 +20,8 @@ __all__ = [
     "backends",
     "results",
     "visualization",
+    "io",
+    "suppression",
     # Top-level classes
     "Circuit",
     "Gate",

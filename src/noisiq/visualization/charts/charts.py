@@ -13,14 +13,19 @@ import matplotlib.pyplot as plt
 
 from ...backends.many_shot_runner import AggregateResult
 from ..theme import (
+    CHART_AXIS_LABEL_FONT_SIZE,
     CHART_BAR_EDGE_WIDTH,
     CHART_BAR_HEIGHT,
+    CHART_BAR_VALUE_X_OFFSET,
+    CHART_FIDELITY_YLIM_BOTTOM,
+    CHART_FIDELITY_YLIM_TOP,
     CHART_GRID_ALPHA,
     CHART_LINE_STYLES,
     CHART_LINE_WIDTH,
     CHART_MARKER_SIZE,
     CHART_SECONDARY_COLORS,
     CHART_TITLE_FONT_SIZE,
+    CHART_TITLE_PAD,
     CHART_VALUE_LABEL_FONT_SIZE,
     CLIFFORD_GATE_COLOR,
     ERROR_COLOR,
@@ -75,14 +80,14 @@ def plot_qubit_error_bar(
     for bar, rate in zip(bars, qubit_rates):
         if rate > 0:
             ax.text(
-                bar.get_width() + 0.001,
+                bar.get_width() + CHART_BAR_VALUE_X_OFFSET,
                 bar.get_y() + bar.get_height() / 2,
                 f"{rate:.3f}",
                 va="center", ha="left",
                 fontsize=CHART_VALUE_LABEL_FONT_SIZE, color=WIRE_COLOR,
             )
 
-    ax.set_xlabel("Error rate  (errors / shot)", fontsize=10)
+    ax.set_xlabel("Error rate  (errors / shot)", fontsize=CHART_AXIS_LABEL_FONT_SIZE)
     ax.set_xlim(0, max(qubit_rates.max() * 1.25, 0.01))
     ax.invert_yaxis()
     ax.set_frame_on(False)
@@ -92,7 +97,7 @@ def plot_qubit_error_bar(
 
     ax.set_title(
         title or f"Per-qubit error rate — {result.n_shots} shots",
-        fontsize=CHART_TITLE_FONT_SIZE, pad=8,
+        fontsize=CHART_TITLE_FONT_SIZE, pad=CHART_TITLE_PAD,
     )
 
     fig.tight_layout()
@@ -159,9 +164,9 @@ def plot_fidelity_decay(
             label=label,
         )
 
-    ax.set_xlabel("Gate depth", fontsize=10)
-    ax.set_ylabel("Fidelity estimate\n(zero-error shot fraction)", fontsize=10)
-    ax.set_ylim(-0.05, 1.05)
+    ax.set_xlabel("Gate depth", fontsize=CHART_AXIS_LABEL_FONT_SIZE)
+    ax.set_ylabel("Fidelity estimate\n(zero-error shot fraction)", fontsize=CHART_AXIS_LABEL_FONT_SIZE)
+    ax.set_ylim(CHART_FIDELITY_YLIM_BOTTOM, CHART_FIDELITY_YLIM_TOP)
     ax.set_xlim(0.5, max(len(c) for c in curves) + 0.5)
     ax.xaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
     ax.yaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
@@ -171,7 +176,7 @@ def plot_fidelity_decay(
     if len(curves) > 1 or labels:
         ax.legend(fontsize=CHART_VALUE_LABEL_FONT_SIZE, frameon=False)
 
-    ax.set_title(title or "Fidelity decay vs. circuit depth", fontsize=CHART_TITLE_FONT_SIZE, pad=8)
+    ax.set_title(title or "Fidelity decay vs. circuit depth", fontsize=CHART_TITLE_FONT_SIZE, pad=CHART_TITLE_PAD)
 
     fig.tight_layout()
     return fig
