@@ -4,8 +4,7 @@ OpenQASM 2.0 parser for importing circuits into the NoisiQ IR.
 Supported statements:
   - qreg declarations           (one or more named registers)
   - Single-qubit gates          h, x, y, z, s, sdg, t, tdg, id
-  - Two-qubit gates             cx, cnot, cz, swap, cs
-  - Three-qubit gates           ccz
+  - Two-qubit gates             cx, cnot, cz, swap
   - barrier                     silently ignored
   - measure / reset             silently ignored
   - include / OPENQASM header   silently ignored
@@ -50,8 +49,6 @@ _GATE_MAP: Dict[str, object] = {
     "cnot": ir_gates.CNOT,
     "cz":   ir_gates.CZ,
     "swap": ir_gates.SWAP,
-    "cs":   ir_gates.CS,
-    "ccz":  ir_gates.CCZ,
 }
 
 # Statements that are legal but carry no information for the IR

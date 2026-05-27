@@ -292,7 +292,7 @@ class GateInfoExtractor:
                 if T1_seen else 0.0
             )
             cum_t2 = (
-                1.0 - float(np.exp(-total_t_t2_s / T2_seen))
+                1.0 - float(np.exp(-2.0 * total_t_t2_s / T2_seen))
                 if T2_seen else 0.0
             )
 
@@ -320,7 +320,7 @@ class GateInfoExtractor:
             if qubit not in op.qubits:
                 continue
             if op.t > cursor_x:
-                break
+                continue
             for sub in cls._iterate_channels(noise_config.get(idx)):
                 if isinstance(sub, AmplitudeDamping):
                     total_t_t1 += sub.t

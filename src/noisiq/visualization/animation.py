@@ -331,8 +331,9 @@ class CircuitAnimator:
         # overcounting is negligible (<5% relative). A more rigorous
         # "any-error per qubit" requires per-shot reduction, which
         # AggregateResult doesn't currently expose. Worth a follow-up.
+        import numpy as np
         rate_matrix = self.result.error_rate_matrix       # (n_qubits, n_timesteps)
-        per_qubit_rate = rate_matrix.sum(axis=1)          # (n_qubits,)
+        per_qubit_rate = 1.0 - np.prod(1.0 - rate_matrix, axis=1) # (n_qubits,)
         per_qubit = [f"err: {r * 100:5.2f}%" for r in per_qubit_rate]
 
         zero_err = self.result.zero_error_fraction

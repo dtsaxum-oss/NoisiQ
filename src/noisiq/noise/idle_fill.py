@@ -78,7 +78,7 @@ def fill_idle_with_identities(
         last_active = max(busy)
 
         scan_start = 0 if fill_leading else first_active
-        scan_end = global_max_t
+        scan_end = global_max_t if fill_trailing else last_active
 
         for t in range(scan_start, scan_end + 1):
             if t in busy:

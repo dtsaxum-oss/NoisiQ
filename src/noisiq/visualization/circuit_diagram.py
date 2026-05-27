@@ -56,8 +56,6 @@ from .theme import (
     draw_cnot,
     draw_cz,
     draw_swap,
-    draw_cs,
-    draw_ccz,
 )
 
 # Horizontal pitch between layer columns (centre-to-centre)
@@ -181,12 +179,6 @@ def draw_circuit(
         elif name == "SWAP":
             q1, q2 = op.qubits
             draw_swap(ax, x, _qubit_y(q1, n_qubits), _qubit_y(q2, n_qubits), fill, edge_lw)
-        elif name in ("CS", "CS_DAG"):
-            q_ctrl, q_tgt = op.qubits
-            draw_cs(ax, x, _qubit_y(q_ctrl, n_qubits), _qubit_y(q_tgt, n_qubits), fill, edge_col, edge_lw)
-        elif name == "CCZ":
-            q1, q2, q3 = op.qubits
-            draw_ccz(ax, x, _qubit_y(q1, n_qubits), _qubit_y(q2, n_qubits), _qubit_y(q3, n_qubits), fill, edge_lw)
         elif name in ("I", "IDLE"):
             pass  # identity and idle are invisible; IDLE decoherence shown via wire halos
         else:

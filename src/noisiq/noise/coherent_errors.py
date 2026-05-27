@@ -13,7 +13,7 @@ by 8–10× in deep circuits (Hines et al., arXiv:2603.18457).
 Pauli-twirling discards the quadratic accumulation. The two-mode design in
 NoisiQ exposes this gap directly:
   - mode='coherent'      → TrajectoryBackend, exact dynamics, ≤13 qubits
-  - mode='pauli_twirl'   → STIM/TSIM, fast, scalable, underestimates deep circuits
+  - mode='pauli_twirl'   → STIM/Qiskit, fast, scalable, underestimates deep circuits
 
 Classes:
     CoherentRotation: A unitary error channel parameterized by a Pauli-string
@@ -72,7 +72,7 @@ class CoherentRotation(KrausChannel):
         # Accidental ZZ Hamiltonian term during a 2q gate:
         zz_err = CoherentRotation(axis='ZZ', epsilon=0.02)
 
-        # Convert to Pauli-twirled form for STIM/TSIM:
+        # Convert to Pauli-twirled form for STIM/Qiskit:
         pauli_approx = zz_err.to_pauli_error()
 
     Raises:
@@ -116,7 +116,7 @@ class CoherentRotation(KrausChannel):
         For multi-qubit axes, returns a CorrelatedPauliError mapping the axis
         Pauli string to sin²(ε).
 
-        This is the bridge to STIM/TSIM: calling this method converts coherent
+        This is the bridge to STIM/Qiskit: calling this method converts coherent
         accumulation into a single-shot stochastic approximation, which is fast
         and scalable but underestimates error in deep circuits.
 

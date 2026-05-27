@@ -6,7 +6,7 @@ from noisiq.noise.kraus_channels import KrausChannel, CombinedChannel
 from noisiq.noise.correlated_errors import CorrelatedPauliError
 from noisiq.backends.base import Backend
 from noisiq.backends.pauli_frame import StimTableauBackend
-from noisiq.backends.tsim_backend import TsimBackend
+from noisiq.backends.qiskit_backend import QiskitAerBackend
 from noisiq.backends.trajectory_backend import TrajectoryBackend
 
 class BackendSelector:
@@ -40,7 +40,6 @@ class BackendSelector:
         })
 
         has_non_clifford_gates = False
-        has_unsupported_tsim_gates = False
 
         for op in circuit.operations:
             name = op.gate.name.upper()
@@ -48,13 +47,14 @@ class BackendSelector:
             is_parametric = name.startswith('P(') or name.startswith('RZ(')
             if is_parametric or name not in _CLIFFORD_GATES:
                 has_non_clifford_gates = True
-            tsim_key = name if not is_parametric else 'RZ'
-            if tsim_key not in TsimBackend.GATE_MAP and not is_parametric:
-                has_unsupported_tsim_gates = True
 
-        if has_non_pauli_noise or (has_non_clifford_gates and has_unsupported_tsim_gates):
-            return TrajectoryBackend()
-        elif has_non_clifford_gates:
-            return TsimBackend()
+        if has_non_pauli_noise or has_non_clifford_gates:
+            try:
+                import qiskit
+                return QiskitAerBackend()
+            except ImportError:
+                if circuit.n_qubits > 13:
+                    raise ImportError("Qiskit is required for non-Clifford/non-Pauli circuits with >13 qubits. Run `pip install qiskit qiskit-aer`.")
+                return TrajectoryBackend()
         else:
             return StimTableauBackend()

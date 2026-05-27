@@ -22,7 +22,7 @@ def test_fill_inserts_idle_in_empty_slots():
     c.add_gate(ir.X, (0,), t=2)
 
     profile = get_hardware("ibm_eagle_r3")
-    filled = fill_idle_with_identities(c, profile.gate_times)
+    filled = fill_idle_with_identities(c, profile.gate_times, fill_trailing=True)
 
     idle_ops = [op for op in filled.operations if op.gate is ir.IDLE]
     placements = sorted((op.qubits[0], op.t) for op in idle_ops)

@@ -225,7 +225,7 @@ class TrajectoryBackend:
     Qubit limit: 13. The density matrix accumulator scales as 4^n in memory
     (256 MB at n=12, 1 GB at n=13). For larger circuits use a Pauli noise
     model, which BackendSelector routes to the memory-efficient Pauli-frame
-    backends (StimTableauBackend or TsimBackend).
+    backends (StimTableauBackend or QiskitAerBackend).
     """
 
     _MAX_QUBITS: int = 13

@@ -90,7 +90,7 @@ def apply_dd(
     # Copy original circuit preserving explicit time placement
     new_circuit = Circuit(n_qubits=circuit.n_qubits, name=circuit.name)
     for op in sorted(circuit.operations, key=lambda o: (o.t, o.qubits)):
-        new_circuit.add_gate(op.gate, op.qubits, t=op.t)
+        new_circuit.add_gate(op.gate, op.qubits, t=op.t, params=op.params, meta=op.meta)
 
     if not circuit.operations:
         return new_circuit

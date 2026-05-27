@@ -166,46 +166,6 @@ SWAP = Gate(
     ),
 )
 
-# Controlled-S: applies S on the target qubit when control is |1⟩.
-# Matrix = diag(1, 1, 1, i).  Clifford gate — stim calls this SQRT_CZ.
-CS = Gate(
-    name="CS",
-    num_qubits=2,
-    matrix=np.array(
-        [
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1j],
-        ],
-        dtype=complex,
-    ),
-)
-
-CS_DAG = Gate(
-    name="CS_DAG",
-    num_qubits=2,
-    matrix=np.array(
-        [
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, -1j],
-        ],
-        dtype=complex,
-    ),
-)
-
-# --- Three-Qubit Gates ---
-
-# CCZ (Controlled-Controlled-Z): applies Z on the target only when both
-# controls are |1⟩.  Not Clifford — routes to TsimBackend / TrajectoryBackend.
-CCZ = Gate(
-    name="CCZ",
-    num_qubits=3,
-    matrix=np.diag([1, 1, 1, 1, 1, 1, 1, -1]).astype(complex),
-)
-
 
 # ==============================================================================
 # Parameterized Gate Factories
