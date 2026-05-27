@@ -167,7 +167,8 @@ SWAP = Gate(
 )
 
 # Controlled-S: applies S on the target qubit when control is |1⟩.
-# Matrix = diag(1, 1, 1, i).  Clifford gate — stim calls this SQRT_CZ.
+# Matrix = diag(1, 1, 1, i).  Third level of the Clifford hierarchy — NOT a
+# Clifford gate.  Routes to TsimBackend (noiseless) or TrajectoryBackend.
 CS = Gate(
     name="CS",
     num_qubits=2,

@@ -66,6 +66,7 @@ from ..theme import (
     WIRE_LINEWIDTH,
     draw_cnot,
     draw_cz,
+    draw_swap,
     draw_single_gate,
     gate_color,
     get_halo_colormap,
@@ -123,6 +124,26 @@ _CZ_PROPAGATION_TABLE: dict[tuple[str, str], tuple[str, str]] = {
     ('I', 'Z'): ('I', 'Z'),
     ('X', 'Z'): ('X', 'I'),
     ('Y', 'Z'): ('Y', 'I'),
+    ('Z', 'Z'): ('Z', 'Z'),
+}
+
+_SWAP_PROPAGATION_TABLE: dict[tuple[str, str], tuple[str, str]] = {
+    # (P_q0, P_q1) → (P_q1, P_q0) — SWAP simply exchanges the two Pauli labels.
+    ('I', 'I'): ('I', 'I'),
+    ('X', 'I'): ('I', 'X'),
+    ('Y', 'I'): ('I', 'Y'),
+    ('Z', 'I'): ('I', 'Z'),
+    ('I', 'X'): ('X', 'I'),
+    ('X', 'X'): ('X', 'X'),
+    ('Y', 'X'): ('X', 'Y'),
+    ('Z', 'X'): ('X', 'Z'),
+    ('I', 'Y'): ('Y', 'I'),
+    ('X', 'Y'): ('Y', 'X'),
+    ('Y', 'Y'): ('Y', 'Y'),
+    ('Z', 'Y'): ('Y', 'Z'),
+    ('I', 'Z'): ('Z', 'I'),
+    ('X', 'Z'): ('Z', 'X'),
+    ('Y', 'Z'): ('Z', 'Y'),
     ('Z', 'Z'): ('Z', 'Z'),
 }
 
@@ -346,6 +367,12 @@ def plot_error_heatmap(
             y2 = n_qubits - 1 - q2
             _draw_cz_gate(ax, x, y1, y2, fill, intensity)
 
+        elif name == "SWAP":
+            q1, q2 = op.qubits
+            y1 = n_qubits - 1 - q1
+            y2 = n_qubits - 1 - q2
+            _draw_swap_gate(ax, x, y1, y2, fill, intensity)
+
         elif name in ("I", "IDLE"):
             pass  # IDLE decoherence is shown via wire halos
 
@@ -512,6 +539,17 @@ def _propagate_pauli_through_gate(pauli_state: dict, op) -> dict | None:
         p1 = result.get(q1, 'I')
         p2 = result.get(q2, 'I')
         new_p1, new_p2 = _CZ_PROPAGATION_TABLE[(p1, p2)]
+        for q, val in ((q1, new_p1), (q2, new_p2)):
+            if val == 'I':
+                result.pop(q, None)
+            else:
+                result[q] = val
+
+    elif name == 'SWAP':
+        q1, q2 = op.qubits[0], op.qubits[1]
+        p1 = result.get(q1, 'I')
+        p2 = result.get(q2, 'I')
+        new_p1, new_p2 = _SWAP_PROPAGATION_TABLE[(p1, p2)]
         for q, val in ((q1, new_p1), (q2, new_p2)):
             if val == 'I':
                 result.pop(q, None)
@@ -699,6 +737,22 @@ def _draw_cz_gate(
         ax, x, (y_min + y_max) / 2, GATE_HALF_W * 2, y_max - y_min, intensity
     )
     draw_cz(ax, x, y1, y2, fill, GATE_EDGE_WIDTH)
+
+
+def _draw_swap_gate(
+    ax: plt.Axes,
+    x: float,
+    y1: float,
+    y2: float,
+    fill: str,
+    intensity: float,
+) -> None:
+    y_min = min(y1, y2)
+    y_max = max(y1, y2)
+    _draw_gate_halo_gradient(
+        ax, x, (y_min + y_max) / 2, GATE_HALF_W * 2, y_max - y_min, intensity
+    )
+    draw_swap(ax, x, y1, y2, fill, GATE_EDGE_WIDTH)
 
 
 # ---------------------------------------------------------------------------

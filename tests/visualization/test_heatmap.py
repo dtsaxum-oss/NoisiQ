@@ -7,7 +7,12 @@ import matplotlib.pyplot as plt
 
 from noisiq.ir import Circuit, gates
 from noisiq.backends.many_shot_runner import AggregateResult
-from noisiq.visualization.charts.heatmap import plot_error_heatmap
+from noisiq.visualization.charts.heatmap import (
+    plot_error_heatmap,
+    _SWAP_PROPAGATION_TABLE,
+    _propagate_pauli_through_gate,
+    _compute_downstream_impact,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +157,62 @@ def test_custom_title_appears():
     title_text = fig.axes[0].get_title()
     assert "My Test Heatmap" in title_text
     plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# SWAP gate support
+# ---------------------------------------------------------------------------
+
+def test_swap_renders_without_error():
+    c = Circuit(n_qubits=2)
+    c.add_gate(gates.H, (0,))
+    c.add_gate(gates.SWAP, (0, 1))
+    counts = np.zeros((2, 2), dtype=np.int64)
+    result = _make_result(counts, c)
+    fig = plot_error_heatmap(result, c)
+    assert fig is not None
+    plt.close(fig)
+
+
+def test_swap_halo_with_nonzero_errors():
+    c = Circuit(n_qubits=2)
+    c.add_gate(gates.SWAP, (0, 1))
+    counts = np.array([[50], [50]], dtype=np.int64)
+    result = _make_result(counts, c, n_shots=100)
+    fig = plot_error_heatmap(result, c)
+    assert fig is not None
+    plt.close(fig)
+
+
+def test_swap_propagation_table_swaps_labels():
+    assert _SWAP_PROPAGATION_TABLE[('X', 'I')] == ('I', 'X')
+    assert _SWAP_PROPAGATION_TABLE[('I', 'Z')] == ('Z', 'I')
+    assert _SWAP_PROPAGATION_TABLE[('Y', 'Y')] == ('Y', 'Y')
+    assert _SWAP_PROPAGATION_TABLE[('Z', 'X')] == ('X', 'Z')
+
+
+def test_swap_propagation_is_self_inverse():
+    c = Circuit(2)
+    c.add_gate(gates.SWAP, (0, 1))
+    swap_op = c.operations[0]
+
+    initial = {0: 'X', 1: 'Z'}
+    after_first = _propagate_pauli_through_gate(initial, swap_op)
+    assert after_first == {0: 'Z', 1: 'X'}
+
+    after_second = _propagate_pauli_through_gate(after_first, swap_op)
+    assert after_second == initial
+
+
+def test_swap_propagates_impact_to_downstream_gate():
+    # H(q0) → SWAP(q0,q1) → X(q1): error on q0 at H reaches X(q1) via SWAP
+    c = Circuit(2)
+    c.add_gate(gates.H, (0,))
+    c.add_gate(gates.SWAP, (0, 1))
+    c.add_gate(gates.X, (1,))
+    impact = _compute_downstream_impact(c)
+    assert impact[0] > 0  # H error propagates through SWAP to X
+    assert impact[1] > 0  # SWAP error reaches X
 
 
 # ---------------------------------------------------------------------------

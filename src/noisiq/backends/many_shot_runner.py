@@ -36,6 +36,7 @@ class AggregateResult:
     circuit: Circuit
     zero_error_shots: np.ndarray
     seed: Optional[int] = None
+    final_state: Optional[np.ndarray] = None
 
     @property
     def error_rate_matrix(self) -> np.ndarray:
