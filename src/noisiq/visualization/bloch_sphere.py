@@ -48,7 +48,10 @@ def density_matrix_to_bloch_vector(rho: np.ndarray) -> tuple[float, float, float
     """
     if rho.shape != (2, 2):
         raise ValueError(f"Expected 2x2 density matrix, got shape {rho.shape}")
-    raise NotImplementedError
+    x = 2 * np.real(rho[0, 1])
+    y = -2 * np.imag(rho[0, 1])
+    z = np.real(rho[0, 0] - rho[1, 1])
+    return (float(x), float(y), float(z))
 
 
 def _draw_sphere_wireframe(ax: plt.Axes, alpha: float = 0.08) -> None:
@@ -63,7 +66,7 @@ def _draw_sphere_wireframe(ax: plt.Axes, alpha: float = 0.08) -> None:
     xs = np.outer(np.cos(u), np.sin(v))
     ys = np.outer(np.sin(u), np.sin(v))
     zs = np.outer(np.ones_like(u), np.cos(v))
-    raise NotImplementedError  # ax.plot_wireframe(xs, ys, zs, ...)
+    ax.plot_wireframe(xs, ys, zs, color=WIRE_COLOR, alpha=alpha)
 
 
 def draw_bloch_sphere(
@@ -93,7 +96,31 @@ def draw_bloch_sphere(
         draw_bloch_sphere(ax, [(0, 0, 1)], labels=["|0⟩"], title="Ground state")
         plt.show()
     """
-    raise NotImplementedError
+    _draw_sphere_wireframe(ax)
+    ax.set_xlim([-1, 1])
+    ax.set_ylim([-1, 1])
+    ax.set_zlim([-1, 1])
+    ax.set_box_aspect([1, 1, 1])
+    
+    # Draw axes
+    ax.plot([-1, 1], [0, 0], [0, 0], color='k', alpha=0.3)
+    ax.plot([0, 0], [-1, 1], [0, 0], color='k', alpha=0.3)
+    ax.plot([0, 0], [0, 0], [-1, 1], color='k', alpha=0.3)
+    
+    if colors is None:
+        colors = [ERROR_COLOR] * len(vectors)
+        
+    for i, (x, y, z) in enumerate(vectors):
+        color = colors[i]
+        label = labels[i] if labels else None
+        ax.quiver(0, 0, 0, x, y, z, color=color, label=label)
+        
+    if title:
+        ax.set_title(title)
+        
+    if labels:
+        ax.legend()
+    return ax
 
 
 def plot_t1_t2_decay(

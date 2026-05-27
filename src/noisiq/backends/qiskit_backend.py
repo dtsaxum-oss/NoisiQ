@@ -7,7 +7,7 @@ import numpy as np
 
 from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
-from qiskit_aer.noise import NoiseModel as QiskitNoiseModel, quantum_error, pauli_error as qiskit_pauli_error
+from qiskit_aer.noise import NoiseModel as QiskitNoiseModel, QuantumError, pauli_error as qiskit_pauli_error
 from qiskit.quantum_info import Kraus
 
 from ..ir.circuit import Circuit
@@ -120,7 +120,7 @@ class QiskitAerBackend(Backend):
                     qc.rz(angle, qubits[0])
             else:
                 # Custom gate
-                qc.append(op.gate.matrix, qubits)
+                qc.unitary(op.gate.matrix, qubits)
 
             if op_idx in noise_dict:
                 apply_noise_to_qc(noise_dict[op_idx], qubits)
