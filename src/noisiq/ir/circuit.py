@@ -175,15 +175,6 @@ class Circuit:
     def swap(self, q1: int, q2: int, t: Optional[int] = None) -> "Circuit":
         return self.add_gate(gates.SWAP, (q1, q2), t=t)
 
-    def cs(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CS, (control, target), t=t)
-
-    def cs_dag(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CS_DAG, (control, target), t=t)
-
-    def ccz(self, q1: int, q2: int, q3: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CCZ, (q1, q2, q3), t=t)
-
     def p(self, qubit: int, theta: float, t: Optional[int] = None) -> "Circuit":
         """Phase gate P(θ) = [[1, 0], [0, e^{iθ}]]."""
         return self.add_gate(gates.phase_gate(theta), (qubit,), t=t)

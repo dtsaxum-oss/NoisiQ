@@ -354,38 +354,3 @@ def draw_swap(
     for y in (y1, y2):
         ax.plot([x - d, x + d], [y - d, y + d], linewidth=lw + 0.5, color=fill, zorder=4)
         ax.plot([x - d, x + d], [y + d, y - d], linewidth=lw + 0.5, color=fill, zorder=4)
-
-
-def draw_cs(
-    ax: plt.Axes,
-    x: float,
-    y_ctrl: float,
-    y_tgt: float,
-    fill: str,
-    edge: str,
-    lw: float,
-) -> None:
-    """Draw a CS gate — control dot on control qubit, S box on target."""
-    ax.plot([x, x], [y_ctrl, y_tgt], linewidth=lw, color=fill, zorder=2)
-    ax.scatter([x], [y_ctrl], s=CONTROL_DOT_SIZE, c=fill, zorder=4)
-    draw_single_gate(ax, x, y_tgt, "S", fill, edge, lw)
-
-
-def draw_ccz(
-    ax: plt.Axes,
-    x: float,
-    y1: float,
-    y2: float,
-    y3: float,
-    fill: str,
-    lw: float,
-) -> None:
-    """Draw a CCZ gate — control dots on q1 and q2, Z-phase dot on q3."""
-    y_min = min(y1, y2, y3)
-    y_max = max(y1, y2, y3)
-    ax.plot([x, x], [y_min, y_max], linewidth=lw, color=fill, zorder=2)
-    ax.scatter([x, x], [y1, y2], s=CONTROL_DOT_SIZE, c=fill, zorder=4)
-    # Z target: open circle with a dot inside (phase-kickback convention)
-    ax.scatter([x], [y3], s=CONTROL_DOT_SIZE * 1.6,
-               facecolors="none", edgecolors=fill, linewidths=lw, zorder=4)
-    ax.scatter([x], [y3], s=CONTROL_DOT_SIZE * 0.4, c=fill, zorder=5)

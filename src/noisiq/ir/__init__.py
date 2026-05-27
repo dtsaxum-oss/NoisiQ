@@ -1,7 +1,7 @@
 from . import gates
 from .circuit import Circuit, Operation
 from .gates import (
-    CNOT, CS, CS_DAG, CCZ, CX, CZ, H, I, IDLE,
+    CNOT, CX, CZ, H, I, IDLE,
     S, S_DAG, SWAP, T, T_DAG, X, Y, Z, Gate,
     phase_gate, rz_gate,
 )
@@ -28,9 +28,8 @@ __all__ = [
     "CX",
     "CZ",
     "SWAP",
-    "CS",
-    "CS_DAG",
-    "CCZ",
+    "PhaseGate",
+    "RZGate",
     # factories
     "phase_gate",
     "rz_gate",
