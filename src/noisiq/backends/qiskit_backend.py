@@ -5,10 +5,14 @@ Qiskit Aer simulation backend.
 from typing import Dict, Optional, Union
 import numpy as np
 
-from qiskit import QuantumCircuit
-from qiskit_aer import AerSimulator
-from qiskit_aer.noise import NoiseModel as QiskitNoiseModel, QuantumError, pauli_error as qiskit_pauli_error
-from qiskit.quantum_info import Kraus
+try:
+    from qiskit import QuantumCircuit
+    from qiskit_aer import AerSimulator
+    from qiskit_aer.noise import NoiseModel as QiskitNoiseModel, QuantumError, pauli_error as qiskit_pauli_error
+    from qiskit.quantum_info import Kraus
+    HAS_QISKIT = True
+except ImportError:
+    HAS_QISKIT = False
 
 from ..ir.circuit import Circuit
 from ..noise.kraus_channels import KrausChannel, CombinedChannel
@@ -24,6 +28,14 @@ class QiskitAerBackend(Backend):
     Simulation backend using Qiskit Aer for universal circuit simulation.
     Supports all gates and complex noise models via Qiskit Aer's density matrix simulator.
     """
+
+    def __init__(self, *args, **kwargs):
+        if not HAS_QISKIT:
+            raise ImportError(
+                "Qiskit Aer is required for QiskitAerBackend. "
+                "Install it with `pip install noisiq[aer]` or `pip install qiskit-aer`."
+            )
+        super().__init__(*args, **kwargs)
 
     def run(
         self,

@@ -92,6 +92,7 @@ dependencies = [
     "ipywidgets>=8.0",
     "stim>=1.13",
     "qiskit>=1.0",
+    "qiskit-aer>=0.14",
     "pylatexenc>=2.10",
 ]
 
