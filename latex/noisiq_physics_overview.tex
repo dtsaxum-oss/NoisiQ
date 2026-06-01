@@ -1,0 +1,129 @@
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{braket}
+
+\geometry{margin=1in}
+
+\title{\textbf{NoisiQ: Mathematical Foundations of Error Channels and State Metrics}}
+\author{NoisiQ Development Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document provides a comprehensive mathematical overview of the quantum noise models and state evaluation metrics implemented in the NoisiQ Python package. It covers the Kraus operator formalism for completely positive trace-preserving (CPTP) maps, specific derivations for Pauli noise, T1 relaxation, T2 dephasing, and coherent errors, as well as the calculation of fidelity and purity for simulated quantum states.
+\end{abstract}
+
+\section{Introduction to Open Quantum Systems}
+In the era of near intermediate scale quantum computing, quantum states are not perfectly isolated from their environment. We represent a general quantum state using a density matrix $\rho$, which is a positive semi-definite Hermitian operator with unit trace ($\text{Tr}(\rho) = 1$).
+
+The evolution of an open quantum system is described by a Completely Positive Trace-Preserving (CPTP) map, $\mathcal{E}$. The action of this map on a density matrix $\rho$ is typically expressed using the operator-sum representation, also known as the Kraus formalism:
+\begin{equation}
+    \mathcal{E}(\rho) = \sum_{k} E_k \rho E_k^\dagger
+\end{equation}
+where the Kraus operators $E_k$ satisfy the completeness relation to ensure trace preservation:
+\begin{equation}
+    \sum_{k} E_k^\dagger E_k = I
+\end{equation}
+NoisiQ implements several standard error channels by applying these Kraus operators to the state during density-matrix or trajectory-based simulation.
+
+\section{Error Channels in NoisiQ}
+
+\subsection{Pauli Channels}
+Pauli errors represent discrete, stochastic bit-flips or phase-flips. A general single-qubit Pauli channel applies the Pauli matrices $X, Y, Z$ with specific probabilities.
+
+\subsubsection{Depolarizing Channel}
+The depolarizing channel represents a worst-case scenario where the qubit is replaced by the completely mixed state $I/2$ with probability $p$. The Kraus operators are:
+\begin{align}
+    E_0 &= \sqrt{1 - p} I \\
+    E_1 &= \sqrt{\frac{p}{3}} X \\
+    E_2 &= \sqrt{\frac{p}{3}} Y \\
+    E_3 &= \sqrt{\frac{p}{3}} Z
+\end{align}
+This isotropically shrinks the Bloch vector towards the origin.
+
+\subsubsection{Bit-Flip and Phase-Flip Channels}
+The bit-flip channel applies an $X$ gate with probability $p$:
+\begin{equation}
+    E_0 = \sqrt{1-p} I, \quad E_1 = \sqrt{p} X
+\end{equation}
+Similarly, the phase-flip channel applies a $Z$ gate with probability $p$:
+\begin{equation}
+    E_0 = \sqrt{1-p} I, \quad E_1 = \sqrt{p} Z
+\end{equation}
+
+\subsection{Amplitude Damping (T1 Relaxation)}
+Amplitude damping models the loss of energy from a quantum system to its environment, such as a qubit decaying from the excited state $\ket{1}$ to the ground state $\ket{0}$. The probability of decay $\gamma$ over a time $t$ is given by:
+\begin{equation}
+    \gamma = 1 - e^{-t / T_1}
+\end{equation}
+where $T_1$ is the relaxation time constant. The Kraus operators are:
+\begin{equation}
+    E_0 = \begin{pmatrix} 1 & 0 \\ 0 & \sqrt{1-\gamma} \end{pmatrix}, \quad 
+    E_1 = \begin{pmatrix} 0 & \sqrt{\gamma} \\ 0 & 0 \end{pmatrix}
+\end{equation}
+Here, $E_0$ represents the state slowly losing its excited population (no jump), and $E_1$ represents the discrete quantum jump from $\ket{1}$ to $\ket{0}$.
+
+\subsection{Phase Damping (T2 Dephasing)}
+Phase damping models the loss of quantum information without the loss of energy. It describes the decay of off-diagonal elements (coherences) in the density matrix. The scattering probability $\lambda$ over time $t$ is:
+\begin{equation}
+    \lambda = 1 - e^{-t / T_2}
+\end{equation}
+where $T_2$ is the dephasing time constant. The Kraus operators are:
+\begin{equation}
+    E_0 = \begin{pmatrix} 1 & 0 \\ 0 & \sqrt{1-\lambda} \end{pmatrix}, \quad 
+    E_1 = \begin{pmatrix} 0 & 0 \\ 0 & \sqrt{\lambda} \end{pmatrix}
+\end{equation}
+This channel shrinks the $x$ and $y$ components of the Bloch vector while leaving the $z$ component (populations) invariant.
+
+\subsection{Coherent Errors (Over/Under-Rotations)}
+Unlike stochastic noise, coherent errors represent systematic miscalibrations in control hardware, resulting in a unitary mismatch. If an ideal gate applies a unitary $U$, a coherent error applies a slight additional rotation by an angle $\epsilon$ around a specified axis $\hat{n}$:
+\begin{equation}
+    U_{\text{noisy}} = \exp\left(-i \frac{\epsilon}{2} \hat{n} \cdot \vec{\sigma}\right) U
+\end{equation}
+Because this error is unitary, it preserves the purity of the state but systematically shifts the Bloch vector away from the target state. In NoisiQ, this is modeled via a single Kraus operator (since it is a unitary channel): $E_0 = U_{\text{error}}$.
+
+\subsection{Correlated Pauli Errors}
+In multi-qubit systems, errors are often not independent. Crosstalk and shared environments lead to correlated errors, where multiple qubits experience faults simultaneously. NoisiQ models this via string-based probabilities. For a two-qubit system, a correlated error might be represented as:
+\begin{equation}
+    \mathcal{E}(\rho) = (1 - p_{ZZ}) \rho + p_{ZZ} (Z \otimes Z) \rho (Z \otimes Z)^\dagger
+\end{equation}
+This is critical for evaluating quantum error correction (QEC) schemes, which often fail under highly correlated noise.
+
+\section{State Metrics}
+
+To evaluate the impact of the above error channels, NoisiQ computes several metrics from the final density matrix $\rho$.
+
+\subsection{Purity}
+Purity measures how ``mixed'' a quantum state is, indicating the degree of classical uncertainty introduced by the environment. It is defined as:
+\begin{equation}
+    \mathcal{P}(\rho) = \text{Tr}(\rho^2)
+\end{equation}
+\begin{itemize}
+    \item For a perfectly pure state (no classical noise), $\mathcal{P} = 1$.
+    \item For a maximally mixed $d$-dimensional state (e.g., after infinite depolarizing noise), $\mathcal{P} = \frac{1}{d}$. For an $n$-qubit system, $d = 2^n$.
+\end{itemize}
+In NoisiQ's visualizers, purity decay curves are often plotted against circuit depth to show the transition from a pure state to a mixed state.
+
+\subsection{Fidelity}
+Fidelity measures the ``closeness'' of the noisy state $\rho$ to the ideal target state $\sigma$. The generalized fidelity between two density matrices is defined using the Uhlmann-Jozsa formula:
+\begin{equation}
+    F(\rho, \sigma) = \left( \text{Tr} \sqrt{\sqrt{\rho} \sigma \sqrt{\rho}} \right)^2
+\end{equation}
+In most NoisiQ simulations, the target state is a pure state $\sigma = \ket{\psi}\bra{\psi}$. In this case, the formula dramatically simplifies to the state overlap:
+\begin{equation}
+    F(\rho, \ket{\psi}) = \bra{\psi} \rho \ket{\psi}
+\end{equation}
+Fidelity is bounded between $0$ and $1$. A fidelity of $1$ implies the noisy state is identical to the ideal target state.
+
+\section{Conclusion}
+By combining scalable propagation algorithms with these exact mathematical formulations of physical noise, NoisiQ allows users to observe the precise mechanisms of quantum decoherence. From the stochastic collapse of T1 relaxation to the systematic drift of coherent errors, these models form the foundation of NoisiQ's visualization and simulation capabilities.
+
+\end{document}
