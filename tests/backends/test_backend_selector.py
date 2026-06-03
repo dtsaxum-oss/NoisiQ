@@ -38,22 +38,22 @@ def test_selector_nonpauli():
     backend = BackendSelector.select(c, noise)
     assert isinstance(backend, TrajectoryBackend)
 
-def test_selector_correlated_pauli_routes_to_trajectory():
-    """CorrelatedPauliError must route to TrajectoryBackend, not StimTableauBackend."""
+def test_selector_correlated_pauli_routes_to_stim():
+    """CorrelatedPauliError is Pauli-compatible → StimTableauBackend (Phase 4B fix)."""
     c = Circuit(2)
     c.h(0).cnot(0, 1)
     noise = CorrelatedPauliError({'ZZ': 0.01})
     backend = BackendSelector.select(c, noise)
-    assert isinstance(backend, TrajectoryBackend)
+    assert isinstance(backend, StimTableauBackend)
 
 
-def test_selector_correlated_pauli_dict_routes_to_trajectory():
-    """Per-op dict containing CorrelatedPauliError also routes to TrajectoryBackend."""
+def test_selector_correlated_pauli_dict_routes_to_stim():
+    """Per-op dict containing CorrelatedPauliError also routes to StimTableauBackend."""
     c = Circuit(2)
     c.h(0).cnot(0, 1)
     noise = {1: CorrelatedPauliError({'ZZ': 0.01})}
     backend = BackendSelector.select(c, noise)
-    assert isinstance(backend, TrajectoryBackend)
+    assert isinstance(backend, StimTableauBackend)
 
 
 def test_backends_seed_none():

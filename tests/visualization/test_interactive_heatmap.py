@@ -16,7 +16,7 @@ def _small_circuit_and_result():
     c.add_gate(ir.CNOT, (0, 1), t=1)
 
     profile = get_hardware("ibm_eagle_r3")
-    noise = profile.to_pauli_noise_model(c)
+    noise = profile.to_noise_model(c, representation="pauli_twirl")
     result = ManyShotRunner().run(c, n_shots=100, noise_config=noise, seed=42)
     return c, result, noise
 
@@ -29,7 +29,7 @@ def _kraus_circuit_and_result():
 
     profile = get_hardware("ibm_eagle_r3")
     filled = fill_idle_with_identities(c, profile.gate_times)
-    pauli_noise = profile.to_pauli_noise_model(filled)
+    pauli_noise = profile.to_noise_model(filled, representation="pauli_twirl")
     result = ManyShotRunner().run(filled, n_shots=100, noise_config=pauli_noise, seed=42)
     kraus_noise = profile.to_noise_model(filled)
     return filled, result, pauli_noise, kraus_noise
@@ -96,6 +96,7 @@ def test_interactive_annotate_no_noise_config():
     assert handle.figure is not None
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_interactive_annotate_with_wire_halo_metric():
     _, result, _, kraus_noise = _kraus_circuit_and_result()
     filled = result.circuit
@@ -141,6 +142,7 @@ def test_plot_error_heatmap_no_noise_config():
     assert fig is not None
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_plot_error_heatmap_with_kraus_noise():
     from noisiq.visualization import plot_error_heatmap
     filled, result, _, kraus_noise = _kraus_circuit_and_result()

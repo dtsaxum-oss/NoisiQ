@@ -247,3 +247,22 @@ def rz_gate(theta: float) -> Gate:
     )
     return Gate(name=f"RZ({theta:.4g})", num_qubits=1, matrix=matrix)
 
+
+def ry_gate(theta: float) -> Gate:
+    """Return RY(θ) = [[cos(θ/2), -sin(θ/2)], [sin(θ/2), cos(θ/2)]] — rotation about Y.
+
+    Used for magic-state preparation, e.g. RY(π/4)|0⟩ = |H⟩ (the +1 eigenstate
+    of the Hadamard operator, also written |T⟩ in some conventions).
+    Not Clifford for arbitrary θ.
+
+    Args:
+        theta: Rotation angle in radians.
+
+    Returns:
+        Gate with name "RY(θ)" rounded to 4 significant figures.
+    """
+    c = np.cos(theta / 2)
+    s = np.sin(theta / 2)
+    matrix = np.array([[c, -s], [s, c]], dtype=complex)
+    return Gate(name=f"RY({theta:.4g})", num_qubits=1, matrix=matrix)
+

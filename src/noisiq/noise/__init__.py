@@ -18,7 +18,7 @@ from .pauli_channels import (
 from .kraus_channels import KrausChannel, CombinedChannel
 from .amplitude_damping import AmplitudeDamping
 from .t2_dephasing import Dephasing
-from .coherent_errors import CoherentRotation
+from .coherent_errors import CoherentRotation, StochasticCoherentRotation
 from .correlated_errors import CorrelatedPauliError
 from .hardware_noise import (
     GHZResult,
@@ -49,6 +49,7 @@ __all__ = [
     "Dephasing",
     # Coherent and correlated error channels
     "CoherentRotation",
+    "StochasticCoherentRotation",
     "CorrelatedPauliError",
     # Hardware profiles and registry
     "GHZResult",

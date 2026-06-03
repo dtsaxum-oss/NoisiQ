@@ -25,7 +25,8 @@ from typing import Optional
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch
 
-from ..ir import Circuit
+from ..ir import Circuit, Operation
+from ..ir.classical import Measurement as _Measurement, ConditionalOp as _ConditionalOp
 from .pauli_frame_tracker import PauliFrame
 from .theme import (
     ACTIVE_COLUMN_COLOR,
@@ -36,10 +37,12 @@ from .theme import (
     FONT_FAMILY,
     GATE_EDGE_COLOR,
     GATE_EDGE_WIDTH,
+    GATE_HALF_H,
     GATE_HALF_W,
     GATE_HIGHLIGHT_EDGE_COLOR,
     GATE_HIGHLIGHT_EDGE_WIDTH,
     GATE_SIZE,
+    MEASUREMENT_EDGE_COLOR,
     PAULI_ERROR_BG_COLOR,
     PAULI_ERROR_BOX_PAD,
     PAULI_ERROR_LINEWIDTH,
@@ -58,6 +61,9 @@ from .theme import (
     draw_swap,
     draw_cs,
     draw_ccz,
+    draw_measurement,
+    draw_classical_control_wire,
+    draw_ry,
 )
 
 # Horizontal pitch between layer columns (centre-to-centre)
@@ -131,8 +137,17 @@ def draw_circuit(
         else _WIRE_RIGHT_MARGIN_PLAIN
     )
 
-    # Unique sorted layer indices → map each to a tight x-column
+    # Unique sorted layer indices → map each to a tight x-column.
+    # All CircuitOp variants (Operation, Measurement, ConditionalOp) expose .t.
     layer_indices = sorted(set(op.t for op in ops)) if ops else []
+
+    def _preceding_meas(cbit_idx: int, before_t: int) -> "_Measurement | None":
+        """Return the most recent Measurement writing cbit_idx at or before before_t."""
+        candidates = [
+            op for op in ops
+            if isinstance(op, _Measurement) and op.cbit.index == cbit_idx and op.t <= before_t
+        ]
+        return max(candidates, key=lambda m: m.t, default=None)
     layer_to_x: dict[int, float] = {
         t: i * _X_PITCH for i, t in enumerate(layer_indices)
     }
@@ -163,13 +178,60 @@ def draw_circuit(
         )
         ax.add_patch(col_patch)
 
-    # --- Gates --------------------------------------------------------------
+    # --- Gates, Measurements, and Conditional Ops ---------------------------
     for op in ops:
         x = layer_to_x[op.t]
-        name = op.gate.name.upper()
         is_hl = highlight_t is not None and op.t == highlight_t
-        edge_col = GATE_HIGHLIGHT_EDGE_COLOR if is_hl else GATE_EDGE_COLOR
         edge_lw = GATE_HIGHLIGHT_EDGE_WIDTH if is_hl else GATE_EDGE_WIDTH
+
+        if isinstance(op, _Measurement):
+            draw_measurement(ax, x, _qubit_y(op.qubit, n_qubits), op.cbit.name)
+            continue
+
+        if isinstance(op, _ConditionalOp):
+            inner = op.inner
+            inner_name = inner.gate.name.upper()
+            fill = gate_color(inner_name)
+            # Draw inner gate with the measurement edge color to signal it is conditional
+            if inner_name in ("CNOT", "CX"):
+                qc, qt = inner.qubits
+                draw_cnot(ax, x, _qubit_y(qc, n_qubits), _qubit_y(qt, n_qubits), fill, edge_lw, edge=MEASUREMENT_EDGE_COLOR)
+            elif inner_name == "CZ":
+                q1, q2 = inner.qubits
+                draw_cz(ax, x, _qubit_y(q1, n_qubits), _qubit_y(q2, n_qubits), fill, edge_lw, edge=MEASUREMENT_EDGE_COLOR)
+            elif inner_name == "SWAP":
+                q1, q2 = inner.qubits
+                draw_swap(ax, x, _qubit_y(q1, n_qubits), _qubit_y(q2, n_qubits), fill, edge_lw, edge=MEASUREMENT_EDGE_COLOR)
+            elif inner_name in ("CS", "CS_DAG"):
+                q_ctrl, q_tgt = inner.qubits
+                draw_cs(ax, x, _qubit_y(q_ctrl, n_qubits), _qubit_y(q_tgt, n_qubits), fill, MEASUREMENT_EDGE_COLOR, edge_lw)
+            elif inner_name == "CCZ":
+                q1, q2, q3 = inner.qubits
+                draw_ccz(ax, x, _qubit_y(q1, n_qubits), _qubit_y(q2, n_qubits), _qubit_y(q3, n_qubits), fill, edge_lw, edge=MEASUREMENT_EDGE_COLOR)
+            elif inner_name.startswith("RY("):
+                (q,) = inner.qubits
+                draw_ry(ax, x, _qubit_y(q, n_qubits), inner_name, fill,
+                        MEASUREMENT_EDGE_COLOR, edge_lw)
+            else:
+                (q,) = inner.qubits
+                draw_single_gate(ax, x, _qubit_y(q, n_qubits), inner_name, fill,
+                                 MEASUREMENT_EDGE_COLOR, edge_lw)
+            # Draw classical control wire from the originating measurement
+            meas = _preceding_meas(op.condition.index, op.t)
+            if meas is not None:
+                x_m = layer_to_x[meas.t]
+                y_m = _qubit_y(meas.qubit, n_qubits)
+                y_g = _qubit_y(inner.qubits[0], n_qubits)
+                draw_classical_control_wire(ax, x_m, y_m, x, y_g)
+            continue
+
+        # Skip any unknown op type (e.g. test stubs, future IR extensions).
+        if not isinstance(op, Operation):
+            continue
+
+        # Plain Operation
+        name = op.gate.name.upper()
+        edge_col = GATE_HIGHLIGHT_EDGE_COLOR if is_hl else GATE_EDGE_COLOR
         fill = gate_color(name)
 
         if name in ("CNOT", "CX"):
@@ -189,6 +251,9 @@ def draw_circuit(
             draw_ccz(ax, x, _qubit_y(q1, n_qubits), _qubit_y(q2, n_qubits), _qubit_y(q3, n_qubits), fill, edge_lw)
         elif name in ("I", "IDLE"):
             pass  # identity and idle are invisible; IDLE decoherence shown via wire halos
+        elif name.startswith("RY("):
+            (q,) = op.qubits
+            draw_ry(ax, x, _qubit_y(q, n_qubits), name, fill, edge_col, edge_lw)
         else:
             (q,) = op.qubits
             draw_single_gate(ax, x, _qubit_y(q, n_qubits), name, fill, edge_col, edge_lw)

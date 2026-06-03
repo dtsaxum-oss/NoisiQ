@@ -1,5 +1,6 @@
 from . import gates
 from .circuit import Circuit, Operation
+from .classical import ClassicalBit, ClassicalRegister, Measurement, ConditionalOp
 from .gates import (
     CNOT, CS, CS_DAG, CCZ, CX, CZ, H, I, IDLE,
     S, S_DAG, SWAP, T, T_DAG, X, Y, Z, Gate,
@@ -12,6 +13,11 @@ __all__ = [
     # from circuit.py
     "Circuit",
     "Operation",
+    # from classical.py
+    "ClassicalBit",
+    "ClassicalRegister",
+    "Measurement",
+    "ConditionalOp",
     # from gates.py
     "Gate",
     "I",

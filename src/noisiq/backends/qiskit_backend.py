@@ -14,7 +14,7 @@ from ..ir.circuit import Circuit
 from ..noise.kraus_channels import KrausChannel, CombinedChannel
 from ..noise.pauli_error import PauliError
 from ..noise.correlated_errors import CorrelatedPauliError
-from ..noise.coherent_errors import CoherentRotation
+from ..noise.coherent_errors import CoherentRotation, StochasticCoherentRotation
 from ..results import SimulationResult
 from .base import Backend
 
@@ -76,6 +76,13 @@ class QiskitAerBackend(Backend):
                 ])
                 for q in qubits:
                     qc.append(q_err, [q])
+            elif isinstance(channel, StochasticCoherentRotation):
+                raise TypeError(
+                    f"StochasticCoherentRotation is not supported by QiskitAerBackend — "
+                    f"it samples a random angle per trajectory shot, which has no "
+                    f"equivalent in Qiskit Aer's static noise model. Convert to a "
+                    f"PauliError approximation first via channel.to_pauli_error()."
+                )
 
         for op_idx, op in sorted(enumerate(circuit.operations), key=lambda kv: (kv[1].t, kv[0])):
             name = op.gate.name.upper()

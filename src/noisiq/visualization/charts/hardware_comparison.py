@@ -87,7 +87,7 @@ def plot_hardware_comparison(
         matplotlib Figure.
 
     Example:
-        noise  = profile.to_pauli_noise_model(circuit)
+        noise  = profile.to_noise_model(circuit, representation="pauli_twirl")
         result = ManyShotRunner().run(circuit, n_shots=2000, noise_config=noise)
         fig    = plot_hardware_comparison(result, circuit, profile)
         plt.show()
@@ -142,9 +142,14 @@ def _draw_fidelity_comparison(
     profile: HardwareProfile,
     n_qubits_simulated: int,
 ) -> None:
-    """Draw a horizontal bar chart comparing NoisiQ fidelity to hardware data."""
+    """Draw a horizontal bar chart comparing NoisiQ zero-error survival to hardware state fidelity.
 
-    sim_fidelity = result.zero_error_fraction
+    Note: these are different quantities. NoisiQ reports no-error survival probability
+    (fraction of shots with no sampled error event). Hardware numbers are experimental
+    state fidelities. They are shown together for scale reference only.
+    """
+
+    zero_error_fraction = result.zero_error_fraction
 
     # Collect published fidelities (only those with a non-None value)
     pub = [r for r in profile.ghz_results if r.fidelity is not None]
@@ -156,9 +161,9 @@ def _draw_fidelity_comparison(
     bar_notes:  list[str] = []
 
     bar_labels.append(f"NoisiQ  ({n_qubits_simulated}q)")
-    bar_values.append(sim_fidelity)
+    bar_values.append(zero_error_fraction)
     bar_colors.append(CLIFFORD_GATE_COLOR)
-    bar_notes.append(f"{sim_fidelity:.3f}  ← zero-error shot fraction")
+    bar_notes.append(f"{zero_error_fraction:.3f}  ← no-error survival (not state fidelity)")
 
     for r in pub:
         bar_labels.append(f"Hardware  ({r.n_qubits}q,  {r.year})")
@@ -192,7 +197,7 @@ def _draw_fidelity_comparison(
 
     ax.set_yticks(y_pos)
     ax.set_yticklabels(bar_labels, fontsize=HARDWARE_CMP_YTICK_FONT_SIZE)
-    ax.set_xlabel("Fidelity estimate", fontsize=HARDWARE_CMP_XLABEL_FONT_SIZE)
+    ax.set_xlabel("No-error survival  /  state fidelity", fontsize=HARDWARE_CMP_XLABEL_FONT_SIZE)
     ax.set_xlim(0, HARDWARE_CMP_XLIM_MAX)
     ax.set_ylim(HARDWARE_CMP_YLIM_BOTTOM_PAD, len(bar_labels) + HARDWARE_CMP_YLIM_TOP_OFFSET)
     ax.invert_yaxis()
@@ -219,11 +224,6 @@ def _draw_fidelity_comparison(
         va="top",
     )
 
-    ax.set_title("Fidelity: NoisiQ simulation vs published hardware",
+    ax.set_title("NoisiQ simulation vs. published hardware",
                  fontsize=HARDWARE_CMP_PANEL_TITLE_FONT_SIZE,
                  pad=HARDWARE_CMP_PANEL_TITLE_PAD)
-
-    # Dashed reference line at 0.5 (maximally mixed)
-    ax.axvline(0.5, color="gray", linestyle=":", linewidth=CHART_BAR_EDGE_WIDTH, alpha=0.5)
-    ax.text(0.5, len(bar_labels) + HARDWARE_CMP_REFLINE_LABEL_Y_OFFSET, "random\nguessing",
-            ha="center", fontsize=HARDWARE_CMP_REFLINE_LABEL_FONT_SIZE, color="gray", va="top")

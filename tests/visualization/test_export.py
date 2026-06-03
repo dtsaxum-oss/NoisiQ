@@ -33,7 +33,7 @@ def filled_circuit(simple_circuit):
 @pytest.fixture()
 def pauli_noise(filled_circuit):
     from noisiq.noise import get_hardware
-    return get_hardware("ibm_eagle_r3").to_pauli_noise_model(filled_circuit)
+    return get_hardware("ibm_eagle_r3").to_noise_model(filled_circuit, representation="pauli_twirl")
 
 
 @pytest.fixture()

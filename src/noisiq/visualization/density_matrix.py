@@ -7,14 +7,18 @@ Provides two views of non-Pauli simulation results:
   2. plot_purity_decay    — Tr(ρ²) vs time.  Noise-model-agnostic quality
      metric: 1 = pure state, 1/2^n = maximally mixed.
 
-And a fidelity utility:
-  3. state_fidelity       — Compare a noisy density matrix to an ideal pure
-     state or density matrix.  Used for hardware comparison experiments.
+Metric utilities:
+  3. density_matrix_state_fidelity — Compare a noisy density matrix to an ideal
+     pure state or density matrix; returns a MetricReport.
+  4. global_purity  — Tr(ρ²) as a MetricReport.
+  5. state_fidelity — Backwards-compatible float alias for density_matrix_state_fidelity.
 
 Functions:
-    state_fidelity      : Quantum state fidelity between ideal and noisy states
-    plot_density_matrix : Side-by-side real/imag heatmaps of ρ
-    plot_purity_decay   : Tr(ρ²) vs time from a list of SimulationResults
+    density_matrix_state_fidelity : Exact state fidelity returning MetricReport
+    global_purity                 : Tr(ρ²) returning MetricReport
+    state_fidelity                : Float alias (backwards compat)
+    plot_density_matrix           : Side-by-side real/imag heatmaps of ρ
+    plot_purity_decay             : Tr(ρ²) vs time from a list of SimulationResults
 """
 
 from __future__ import annotations
@@ -25,6 +29,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ..results import SimulationResult
+from ..results.metrics import MetricKind, MetricReport
 
 
 # ==============================================================================
@@ -76,45 +81,117 @@ def _matrix_sqrt(rho: np.ndarray) -> np.ndarray:
 
 
 # ==============================================================================
-# Public: fidelity
+# Public: metrics
 # ==============================================================================
+
+
+def global_purity(
+    rho: np.ndarray,
+    *,
+    backend: str = "TrajectoryBackend",
+    noise_model: str = "unknown",
+) -> MetricReport:
+    """Return Tr(ρ²) as a MetricReport.
+
+    Args:
+        rho:         Complex density matrix of shape (d, d).
+        backend:     Name of the backend that produced rho.
+        noise_model: Name of the noise model used.
+
+    Returns:
+        MetricReport with kind=GLOBAL_PURITY, value=Tr(ρ²), uncertainty=None.
+    """
+    value = _purity(np.asarray(rho, dtype=complex))
+    return MetricReport(
+        name="Global purity",
+        kind=MetricKind.GLOBAL_PURITY,
+        value=value,
+        uncertainty=None,
+        n_shots=None,
+        backend=backend,
+        noise_model=noise_model,
+        method="exact Tr(ρ²)",
+        definition="Tr(ρ²): 1 for a pure state, 1/d for a maximally mixed state",
+        limitations=("requires full density matrix — not scalable to large qubit counts",),
+    )
+
+
+def density_matrix_state_fidelity(
+    ideal: np.ndarray,
+    noisy: np.ndarray,
+    *,
+    backend: str = "TrajectoryBackend",
+    noise_model: str = "unknown",
+    target: Optional[str] = None,
+) -> MetricReport:
+    """Compute exact state fidelity and return a MetricReport.
+
+    Two calling conventions:
+
+    1. Pure-state reference: pass ideal as a 1-D statevector |ψ⟩.
+       Computes F = ⟨ψ|ρ|ψ⟩.
+
+    2. Mixed-state reference: pass ideal as a 2-D density matrix σ.
+       Computes the Uhlmann fidelity F = [Tr(√(√σ ρ √σ))]².
+
+    Args:
+        ideal:       Ideal state — 1-D statevector or 2-D density matrix.
+        noisy:       Noisy density matrix (e.g. SimulationResult.final_state).
+        backend:     Name of the backend that produced noisy.
+        noise_model: Name of the noise model used.
+        target:      Human-readable description of the target state (e.g. "3-qubit GHZ").
+
+    Returns:
+        MetricReport with kind=DENSITY_MATRIX_STATE_FIDELITY.
+    """
+    value = state_fidelity(ideal, noisy)
+    ideal_arr = np.asarray(ideal)
+    if ideal_arr.ndim == 1:
+        method = "exact ⟨ψ|ρ|ψ⟩"
+        definition = "F = ⟨ψ_ideal|ρ_noisy|ψ_ideal⟩"
+    else:
+        method = "Uhlmann fidelity [Tr(√(√σ ρ √σ))]²"
+        definition = "F(σ,ρ) = [Tr(√(√σ ρ √σ))]²"
+    return MetricReport(
+        name="Density-matrix state fidelity",
+        kind=MetricKind.DENSITY_MATRIX_STATE_FIDELITY,
+        value=value,
+        uncertainty=None,
+        n_shots=None,
+        backend=backend,
+        noise_model=noise_model,
+        method=method,
+        definition=definition,
+        assumptions=("ideal target state is known exactly",),
+        limitations=("requires full density matrix — not scalable to large qubit counts",),
+        target=target,
+    )
 
 
 def state_fidelity(
     ideal: np.ndarray,
     noisy: np.ndarray,
 ) -> float:
-    """Compute quantum state fidelity between an ideal and a noisy state.
+    """Compute quantum state fidelity and return a bare float.
 
-    Two calling conventions are supported:
+    Backwards-compatible alias. Prefer density_matrix_state_fidelity() for
+    new code — it returns a MetricReport with full metadata.
 
-    1. Pure-state reference (fastest, most common):
-       Pass ideal as a 1-D statevector |ψ⟩.  Computes F = ⟨ψ|ρ|ψ⟩.
+    Two calling conventions:
 
-    2. Mixed-state reference:
-       Pass ideal as a 2-D density matrix σ.  Computes the general
-       Uhlmann fidelity F = [Tr(√(√σ ρ √σ))]².
-
-    In both cases noisy must be a 2-D density matrix (e.g. from
-    SimulationResult.final_state returned by TrajectoryBackend).
+    1. Pure-state reference: ideal is a 1-D statevector |ψ⟩.  F = ⟨ψ|ρ|ψ⟩.
+    2. Mixed-state reference: ideal is a 2-D density matrix σ.
+       F = [Tr(√(√σ ρ √σ))]².
 
     Args:
-        ideal: Ideal state — either a 1-D complex statevector of length 2^n
-               or a 2-D complex density matrix of shape (2^n, 2^n).
-        noisy: Noisy density matrix of shape (2^n, 2^n), e.g.
-               SimulationResult.final_state.
+        ideal: 1-D statevector or 2-D density matrix.
+        noisy: Noisy density matrix of shape (2^n, 2^n).
 
     Returns:
-        Fidelity F in [0, 1].  F = 1 means perfect match; F = 0 means
-        orthogonal states.
+        Fidelity F in [0, 1].
 
     Raises:
         ValueError: If array shapes are incompatible.
-
-    Example:
-        ghz = np.zeros(8)
-        ghz[0] = ghz[7] = 1.0 / np.sqrt(2)          # |000⟩ + |111⟩
-        F = state_fidelity(ghz, result.final_state)
     """
     ideal = np.asarray(ideal, dtype=complex)
     noisy = np.asarray(noisy, dtype=complex)
@@ -125,7 +202,6 @@ def state_fidelity(
         )
 
     if ideal.ndim == 1:
-        # Pure-state shortcut: F = ⟨ψ|ρ|ψ⟩
         if ideal.shape[0] != noisy.shape[0]:
             raise ValueError(
                 f"ideal statevector length {ideal.shape[0]} does not match "
@@ -133,7 +209,6 @@ def state_fidelity(
             )
         return float(np.real(ideal.conj() @ noisy @ ideal))
 
-    # General case: F = [Tr(sqrt(sqrt(σ) ρ sqrt(σ)))]²
     if ideal.shape != noisy.shape:
         raise ValueError(
             f"ideal shape {ideal.shape} does not match noisy shape {noisy.shape}"

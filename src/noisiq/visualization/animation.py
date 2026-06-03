@@ -23,7 +23,7 @@ import ipywidgets as widgets
 
 from ..ir import Circuit
 from .circuit_diagram import draw_circuit
-from .pauli_frame_tracker import PauliFrame
+from .pauli_frame_tracker import PauliFrame, build_modal_trajectory_frames
 from .purity_overlay import annotate_axes_with_purities
 from .theme import (
     CIRCUIT_WIDTH_PER_LAYER,
@@ -54,15 +54,25 @@ class CircuitAnimator:
         result,
         trajectories: Optional[Dict[int, PauliFrame]] = None,
         show_annotations: bool = True,
+        mcm_mode: Optional[str] = None,
     ) -> None:
         from ..backends.pauli_frame import StimTableauResult
         from ..backends.many_shot_runner import AggregateResult
+
+        if mcm_mode is not None and mcm_mode not in ("qec", "worst_case"):
+            raise ValueError(
+                f"CircuitAnimator mcm_mode={mcm_mode!r} is not supported. "
+                "GIF animation only supports 'qec' and 'worst_case'. "
+                "Use plot_error_heatmap_side_by_side() for 'side_by_side' "
+                "or plot_error_heatmap(..., mcm_mode='average') for average mode."
+            )
 
         self.circuit = circuit
         self.result = result
         self._is_many_shot = isinstance(result, AggregateResult)
         self._trajectories = trajectories or {}
         self._show_annotations = show_annotations
+        self._mcm_mode = mcm_mode
 
         # Ordered unique layer indices
         self._layers: List[int] = (
@@ -71,12 +81,16 @@ class CircuitAnimator:
             else [0]
         )
 
-        # Build layer → trajectory frame mapping (single-shot only).
-        # trajectories is now a Dict[int, PauliFrame] keyed by time-step t,
-        # so we can use it directly without rebuilding from index lookups.
+        # Build layer → trajectory frame mapping.
+        # Single-shot: use the supplied trajectories dict directly.
+        # Many-shot: pre-compute modal-error frames from counts_by_pauli.
         self._layer_to_frame: dict[int, PauliFrame] = {}
+        self._modal_mode: bool = False
         if not self._is_many_shot and self._trajectories:
             self._layer_to_frame = dict(self._trajectories)
+        elif self._is_many_shot and getattr(result, "counts_by_pauli", None) is not None:
+            self._layer_to_frame = build_modal_trajectory_frames(circuit, result)
+            self._modal_mode = True
 
     # ------------------------------------------------------------------
     # Public API
@@ -252,9 +266,12 @@ class CircuitAnimator:
     # ------------------------------------------------------------------
 
     def _get_frame(self, t: int) -> Optional[PauliFrame]:
-        """Return the PauliFrame for layer t, or None in many-shot mode."""
-        if self._is_many_shot:
-            return None
+        """Return the PauliFrame for layer t.
+
+        Single-shot: returns the per-step trajectory frame.
+        Many-shot modal: returns the propagated modal-error frame for layer t.
+        Many-shot without counts_by_pauli: returns None (static blank).
+        """
         return self._layer_to_frame.get(t)
 
     def _build_annotations(
@@ -281,8 +298,15 @@ class CircuitAnimator:
             return None, None
 
         if self._is_many_shot:
-            return self._build_many_shot_annotations()
-        return self._build_single_shot_annotations(frame_idx)
+            per_qubit, summary = self._build_many_shot_annotations()
+        else:
+            per_qubit, summary = self._build_single_shot_annotations(frame_idx)
+
+        if self._mcm_mode is not None and per_qubit is not None:
+            t = self._layers[frame_idx]
+            per_qubit = self._add_mcm_annotations(per_qubit, t)
+
+        return per_qubit, summary
 
     def _build_single_shot_annotations(
         self, frame_idx: int
@@ -337,12 +361,45 @@ class CircuitAnimator:
 
         zero_err = self.result.zero_error_fraction
         n_shots = self.result.n_shots
+        mode_note = "  [Many-shot — showing modal error]\n" if self._modal_mode else ""
         summary = (
             f"Aggregate stats ({n_shots} shots)\n"
+            f"{mode_note}"
             f"  Zero-error fraction: {zero_err * 100:.2f}%\n"
             f"  Mean err rate (overall): {per_qubit_rate.mean() * 100:.2f}%"
         )
         return per_qubit, summary
+
+    def _add_mcm_annotations(
+        self, per_qubit: list[str], t: int
+    ) -> list[str]:
+        """Append 'M→0' / 'M→1' to per-qubit annotation when a Measurement fires at t."""
+        from ..ir.classical import Measurement
+
+        meas_at_t = [
+            op for op in self.circuit.operations
+            if isinstance(op, Measurement) and op.t == t
+        ]
+        if not meas_at_t:
+            return per_qubit
+
+        per_qubit = list(per_qubit)  # copy — don't mutate the original
+        meas_dict = getattr(self.result, "measurements", None) or {}
+
+        for meas_op in meas_at_t:
+            q = meas_op.qubit
+            outcomes = meas_dict.get(meas_op.cbit.name, [])
+            if outcomes:
+                if self._is_many_shot:
+                    outcome = 1 if sum(outcomes) > len(outcomes) / 2 else 0
+                else:
+                    outcome = outcomes[0]
+                label = f"M→{outcome}"
+            else:
+                label = "M↓"
+            per_qubit[q] = per_qubit[q] + f" | {label}"
+
+        return per_qubit
 
     def _frame_label(self, frame_idx: int) -> str:
         t = self._layers[frame_idx]

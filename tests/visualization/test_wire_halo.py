@@ -16,6 +16,7 @@ from noisiq.visualization.charts.heatmap import (
 
 def _make_filled_circuit_and_kraus_noise():
     """2-qubit circuit filled with IDLEs, using default Kraus noise."""
+    import warnings
     c = Circuit(2)
     c.add_gate(ir.H,    (0,), t=0)
     c.add_gate(ir.CNOT, (0, 1), t=1)
@@ -23,7 +24,9 @@ def _make_filled_circuit_and_kraus_noise():
 
     profile = get_hardware("ibm_eagle_r3")
     filled = fill_idle_with_identities(c, profile.gate_times)
-    noise = profile.to_noise_model(filled)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        noise = profile.to_noise_model(filled)
     return filled, noise, profile
 
 
@@ -82,19 +85,20 @@ def test_no_segments_without_noise_config():
         assert seg.intensity == 0.0
 
 
-def test_pauli_twirl_noise_gives_zero_intensity():
-    """Pauli-twirl noise dicts have no Kraus channels; wire halos are invisible."""
+def test_pauli_twirl_noise_gives_nonzero_intensity():
+    """Pauli-twirl idle channels include T1/T2 contributions; wire halos are visible."""
     c = Circuit(2)
     c.add_gate(ir.H,    (0,), t=0)
     c.add_gate(ir.CNOT, (0, 1), t=2)
 
     profile = get_hardware("ibm_eagle_r3")
     filled = fill_idle_with_identities(c, profile.gate_times)
-    pauli_noise = profile.to_pauli_noise_model(filled)
+    pauli_noise = profile.to_noise_model(filled, representation="pauli_twirl")
 
     segments = _compute_wire_segments(filled, pauli_noise)
+    assert len(segments) > 0
     for seg in segments:
-        assert seg.intensity == 0.0
+        assert seg.intensity > 0.0, f"Expected non-zero intensity for idle segment {seg}"
 
 
 def test_wire_segment_bbox_hit_test():

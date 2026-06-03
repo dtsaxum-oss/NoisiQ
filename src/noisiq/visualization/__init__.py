@@ -3,7 +3,7 @@ Visualization tools for NoisiQ.
 """
 
 from .circuit_diagram import draw_circuit
-from .drawer import draw_circuit_with_labels
+from .drawer import draw_circuit_with_labels, add_metric_box
 from .widgets import Visualizer
 from .animation import CircuitAnimator
 from .export import export_gif, export_html
@@ -16,17 +16,26 @@ from .theme import (
 )
 from . import charts
 from .charts import plot_error_heatmap, plot_qubit_error_bar, plot_fidelity_decay, plot_hardware_comparison, interactive_heatmap
-from .density_matrix import plot_density_matrix, plot_purity_decay, state_fidelity
+from .density_matrix import (
+    plot_density_matrix,
+    plot_purity_decay,
+    state_fidelity,
+    density_matrix_state_fidelity,
+    global_purity,
+)
 from .purity_overlay import (
     per_qubit_purity,
     per_qubit_purities,
     annotate_axes_with_purities,
     add_purity_panel,
+    single_qubit_marginal_purity,
+    single_qubit_marginal_purities,
 )
 
 __all__ = [
     "draw_circuit",
     "draw_circuit_with_labels",
+    "add_metric_box",
     "Visualizer",
     "CircuitAnimator",
     "export_gif",
@@ -45,8 +54,12 @@ __all__ = [
     "plot_density_matrix",
     "plot_purity_decay",
     "state_fidelity",
+    "density_matrix_state_fidelity",
+    "global_purity",
     "per_qubit_purity",
     "per_qubit_purities",
     "annotate_axes_with_purities",
     "add_purity_panel",
+    "single_qubit_marginal_purity",
+    "single_qubit_marginal_purities",
 ]

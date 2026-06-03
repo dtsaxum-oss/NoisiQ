@@ -3,9 +3,9 @@ Idle-slot filler — inserts IDLE operations into layers where a qubit has
 no active gate, so the decoherence model can tick on idle qubits.
 
 The filler is noise-agnostic: it builds structure only. The actual noise
-channel for each IDLE comes from HardwareProfile.to_pauli_noise_model /
-to_noise_model, which branch on `op.gate is IDLE` to apply only T1/T2
-decoherence — never gate error.
+channel for each IDLE comes from HardwareProfile.to_noise_model(), which
+branches on `op.gate is IDLE` to apply only T1/T2 decoherence — never
+gate error.
 
 Two helpers for attaching idle noise without a HardwareProfile:
     idle_kraus(t1, t2, duration_ns)        -> CombinedChannel
@@ -18,6 +18,8 @@ import numpy as np
 
 from ..ir import Circuit
 from ..ir import gates as ir_gates
+from ..ir.circuit import Operation as _Operation
+from ..ir.classical import Measurement as _Measurement, ConditionalOp as _ConditionalOp
 from .amplitude_damping import AmplitudeDamping
 from .t2_dephasing import Dephasing
 from .kraus_channels import CombinedChannel
@@ -45,19 +47,30 @@ def fill_idle_with_identities(
         A new Circuit. Original gate set unchanged; IDLE ops added.
     """
     new_circuit = Circuit(n_qubits=circuit.n_qubits, name=circuit.name)
+    # Preserve classical registers so Measurement/ConditionalOp cbits remain valid.
+    for reg in circuit.classical_registers:
+        new_circuit.classical_registers.append(reg)
     for op in circuit.operations:
-        new_circuit.add_gate(op.gate, op.qubits, t=op.t,
-                             params=op.params, meta=op.meta)
+        if isinstance(op, _Operation):
+            new_circuit.add_gate(op.gate, op.qubits, t=op.t,
+                                 params=op.params, meta=op.meta)
+        else:
+            # Measurement and ConditionalOp — append directly; no add_gate equivalent.
+            new_circuit.operations.append(op)
 
     if not circuit.operations:
         return new_circuit
 
     # Per-layer duration = duration of the longest gate at that layer.
+    # Measurement/ConditionalOp use single_qubit_ns as their slot budget.
     layer_duration_ns: dict[int, float] = {}
     for op in circuit.operations:
-        d = (gate_times.single_qubit_ns
-             if op.gate.num_qubits == 1
-             else gate_times.two_qubit_ns)
+        if isinstance(op, _Operation):
+            d = (gate_times.single_qubit_ns
+                 if op.gate.num_qubits == 1
+                 else gate_times.two_qubit_ns)
+        else:
+            d = gate_times.single_qubit_ns
         layer_duration_ns[op.t] = max(layer_duration_ns.get(op.t, 0.0), d)
 
     # Per-qubit set of layers where that qubit is active.
@@ -65,8 +78,14 @@ def fill_idle_with_identities(
         q: set() for q in range(circuit.n_qubits)
     }
     for op in circuit.operations:
-        for q in op.qubits:
-            qubit_busy_layers[q].add(op.t)
+        if isinstance(op, _Operation):
+            for q in op.qubits:
+                qubit_busy_layers[q].add(op.t)
+        elif isinstance(op, _Measurement):
+            qubit_busy_layers[op.qubit].add(op.t)
+        elif isinstance(op, _ConditionalOp):
+            for q in op.qubits:
+                qubit_busy_layers[q].add(op.t)
 
     global_max_t = max(layer_duration_ns.keys())
 

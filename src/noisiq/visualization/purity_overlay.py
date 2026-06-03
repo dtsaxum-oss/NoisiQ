@@ -2,14 +2,14 @@
 Per-qubit purity overlay helpers for NoisiQ visualizations.
 
 A noisy density matrix ρ has a single scalar purity Tr(ρ²) ∈ [1/d, 1] that
-summarises how much the global state has decohered. For circuit-level visuals
-we want the *per-qubit* version: for each qubit q, trace out the rest of the
+summarises the mixedness of the global state. For circuit-level visuals we
+want the *per-qubit* version: for each qubit q, trace out the rest of the
 system to get ρ_q (a 2×2 matrix), then compute Tr(ρ_q²) ∈ [0.5, 1.0].
 
-Per-qubit purity is the right quantity for the right-hand annotations on
-both the Quirk-style heatmap and the error-propagation GIF: it gives a
-single number per wire that drops as decoherence builds along that qubit's
-trajectory through the circuit.
+Single-qubit marginal purity measures local mixedness. A value below 1 can
+come from physical decoherence/noise or from entanglement with other qubits —
+even in a perfectly closed, pure global state. For GHZ states, 0.5 is expected
+for every qubit even without noise; do not interpret it as a failure signal.
 
 Functions
 ---------
@@ -21,10 +21,25 @@ annotate_axes_with_purities : matplotlib helper — draws labels at right edge
 from __future__ import annotations
 
 import string
+import textwrap
 from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+
+from .theme import (
+    PURITY_CAPTION_FONT_SIZE,
+    PURITY_CAPTION_TEXT,
+    PURITY_CAPTION_WRAP_WIDTH,
+    PURITY_CAPTION_Y_OFFSET,
+    PURITY_LABEL_COLOR,
+    PURITY_LABEL_FONT_FAMILY,
+    PURITY_LABEL_FONT_SIZE,
+    PURITY_LABEL_FORMAT,
+    PURITY_LABEL_PAD_X,
+    PURITY_LABEL_XLIM_PAD,
+    PURITY_LABEL_ZORDER,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -80,8 +95,9 @@ def per_qubit_purity(rho: np.ndarray, n_qubits: int, qubit: int) -> float:
 
     Returns:
         Real-valued purity in [0.5, 1.0].
-        1.0  → that qubit's reduced state is pure (no decoherence on this qubit)
-        0.5  → that qubit's reduced state is maximally mixed
+        1.0  → reduced state is pure (no local mixedness).
+        0.5  → reduced state is maximally mixed — can arise from decoherence
+               or from entanglement with other qubits (expected for GHZ).
     """
     rho_q = _partial_trace_keep_one(rho, keep_qubit=qubit, n_qubits=n_qubits)
     return float(np.real(np.trace(rho_q @ rho_q)))
@@ -90,6 +106,40 @@ def per_qubit_purity(rho: np.ndarray, n_qubits: int, qubit: int) -> float:
 def per_qubit_purities(rho: np.ndarray, n_qubits: int) -> List[float]:
     """Return [Tr(ρ_0²), Tr(ρ_1²), …, Tr(ρ_{n-1}²)] in qubit-index order."""
     return [per_qubit_purity(rho, n_qubits, q) for q in range(n_qubits)]
+
+
+def single_qubit_marginal_purity(rho: np.ndarray, n_qubits: int, qubit: int) -> float:
+    """Return Tr(ρ_q²) for a single qubit after tracing out all others.
+
+    Canonical alias for per_qubit_purity() using the precise physics name.
+
+    GHZ caveat: for an ideal n-qubit GHZ state every single-qubit marginal
+    purity equals 0.5 (maximally mixed reduced state). This is expected — it
+    reflects entanglement, not decoherence. Do not interpret 0.5 as a failure
+    when evaluating GHZ circuits.
+
+    Args:
+        rho:      Full density matrix of shape (2^n, 2^n).
+        n_qubits: Total qubit count.
+        qubit:    Index of the qubit to evaluate.
+
+    Returns:
+        Real-valued purity in [0.5, 1.0].
+        1.0  → reduced state is pure.
+        0.5  → reduced state is maximally mixed (expected for GHZ qubits).
+    """
+    return per_qubit_purity(rho, n_qubits, qubit)
+
+
+def single_qubit_marginal_purities(rho: np.ndarray, n_qubits: int) -> List[float]:
+    """Return single-qubit marginal purities for all qubits in index order.
+
+    Canonical alias for per_qubit_purities() using the precise physics name.
+
+    GHZ caveat: for an ideal GHZ state all values will be 0.5. This is
+    correct — see single_qubit_marginal_purity for the full explanation.
+    """
+    return per_qubit_purities(rho, n_qubits)
 
 
 # ---------------------------------------------------------------------------
@@ -101,12 +151,12 @@ def annotate_axes_with_purities(
     purities: List[float],
     *,
     x_pos: Optional[float] = None,
-    color: str = "#1A237E",
-    fontsize: int = 9,
-    fmt: str = "Tr(ρ²)={p:.3f}",
-    pad_x: float = 0.35,
+    color: str = PURITY_LABEL_COLOR,
+    fontsize: int = PURITY_LABEL_FONT_SIZE,
+    fmt: str = PURITY_LABEL_FORMAT,
+    pad_x: float = PURITY_LABEL_PAD_X,
 ) -> None:
-    """Draw a 'Tr(ρ²)=...' label at the right edge of each qubit wire.
+    """Draw a 'Tr(ρ_q²)={p:.3f}' label at the right edge of each qubit wire.
 
     Designed to be called AFTER `plot_error_heatmap` (which draws qubit wires
     from x=-0.5 to x=n_layers-0.5 with qubit index q at y = n_qubits-1-q),
@@ -133,15 +183,31 @@ def annotate_axes_with_purities(
         # q=0 is the TOP wire (y = n_qubits-1), q=n_qubits-1 is the BOTTOM (y=0).
         y = n_qubits - 1 - q
         ax.text(
-            x_pos, y,
+            x_pos,
+            y,
             fmt.format(p=purities[q]),
-            ha="left", va="center",
-            color=color, fontsize=fontsize,
-            fontfamily="monospace",
+            ha="left",
+            va="center",
+            color=color,
+            fontsize=fontsize,
+            fontfamily=PURITY_LABEL_FONT_FAMILY,
+            zorder=PURITY_LABEL_ZORDER,
         )
 
-    # Make sure the labels are not cut off
-    ax.set_xlim(right=x_pos + 2.0)
+    caption = textwrap.fill(PURITY_CAPTION_TEXT, width=PURITY_CAPTION_WRAP_WIDTH)
+    ax.text(
+        x_pos,
+        -PURITY_CAPTION_Y_OFFSET,
+        caption,
+        ha="left",
+        va="top",
+        color=color,
+        fontsize=PURITY_CAPTION_FONT_SIZE,
+        fontfamily=PURITY_LABEL_FONT_FAMILY,
+        zorder=PURITY_LABEL_ZORDER,
+    )
+
+    ax.set_xlim(right=x_pos + PURITY_LABEL_XLIM_PAD)
 
 
 # ---------------------------------------------------------------------------

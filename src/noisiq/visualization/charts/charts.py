@@ -7,8 +7,9 @@ displaying automatically when called in a Jupyter notebook.
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import List, Literal, Optional, Sequence
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 from ...backends.many_shot_runner import AggregateResult
@@ -17,12 +18,12 @@ from ..theme import (
     CHART_BAR_EDGE_WIDTH,
     CHART_BAR_HEIGHT,
     CHART_BAR_VALUE_X_OFFSET,
-    CHART_FIDELITY_YLIM_BOTTOM,
-    CHART_FIDELITY_YLIM_TOP,
+    CHART_DEFAULT_FIGSIZE,
     CHART_GRID_ALPHA,
     CHART_LINE_STYLES,
     CHART_LINE_WIDTH,
     CHART_MARKER_SIZE,
+    CHART_PROBABILITY_YLIM,
     CHART_SECONDARY_COLORS,
     CHART_TITLE_FONT_SIZE,
     CHART_TITLE_PAD,
@@ -31,6 +32,7 @@ from ..theme import (
     ERROR_COLOR,
     QUBIT_LABEL_FONT_SIZE,
     WIRE_COLOR,
+    get_qubit_error_colormap,
 )
 
 
@@ -39,33 +41,76 @@ def plot_qubit_error_bar(
     title: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
     figsize: tuple = (6, 4),
+    *,
+    color_scale: Literal["relative", "absolute", "absolute_log"] = "absolute",
+    vmax: float = 1.0,
+    show_qualitative_labels: bool = True,
 ) -> plt.Figure:
     """
-    Horizontal bar chart of total error counts per qubit across all timesteps.
+    Horizontal bar chart of error events per shot for each qubit.
+
+    The reported quantity is counts_matrix.sum(axis=1) / n_shots — error events
+    accumulated over all timesteps, divided by the number of shots.  This can
+    exceed 1 if multiple modeled events hit the same qubit across timesteps.
 
     Parameters
     ----------
-    result  : AggregateResult from ManyShotRunner.run()
-    title   : Optional figure title
-    ax      : Existing Axes to draw on; creates a new figure if None
-    figsize : Figure size when creating a new figure
+    result                  : AggregateResult from ManyShotRunner.run()
+    title                   : Optional figure title
+    ax                      : Existing Axes to draw on; creates a new figure if None
+    figsize                 : Figure size when creating a new figure
+    color_scale             : Bar color gradient mode.
+                              "absolute"     — linear 0–vmax scale (default; natural
+                                              for error-events/shot which is bounded
+                                              by n_ops per qubit, not 1).
+                              "relative"     — max qubit in this run → darkest red.
+                              "absolute_log" — log₁₀ scale between 1e-4 and vmax.
+    vmax                    : Upper bound for "absolute" scaling (default 1.0).
+    show_qualitative_labels : When True, append a qualitative label (Trace/Low/
+                              Moderate/High) next to each bar's numeric value.
 
     Returns
     -------
     The matplotlib Figure.
     """
+    from ..noise_metrics import normalize_heat_values, qualitative_burden_label
+
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
         fig = ax.get_figure()
 
-    # Total errors per qubit: sum counts_matrix along timestep axis
+    # Total error events per qubit across all timesteps, divided by shots.
     qubit_totals = result.counts_matrix.sum(axis=1)
     qubit_rates = qubit_totals / result.n_shots
     n_qubits = result.n_qubits
     qubit_labels = [f"q{q}" for q in range(n_qubits)]
 
-    colors = [ERROR_COLOR if r > 0 else CLIFFORD_GATE_COLOR for r in qubit_rates]
+    # Map each qubit's rate to a [0, 1] color intensity, then look up in the
+    # sequential red colormap.  Qubits with zero events stay dark-gray.
+    cmap = get_qubit_error_colormap()
+    if color_scale == "absolute":
+        denom = vmax if vmax > 0 else 1.0
+        color_intensities = np.clip(qubit_rates / denom, 0.0, 1.0)
+    elif color_scale == "relative":
+        denom = float(qubit_rates.max()) if qubit_rates.max() > 0 else 1.0
+        color_intensities = np.clip(qubit_rates / denom, 0.0, 1.0)
+    elif color_scale == "absolute_log":
+        color_intensities = normalize_heat_values(
+            qubit_rates,
+            mode="absolute_log",
+            vmin=1e-4,
+            vmax=max(vmax, 1e-4 + 1e-12),
+            floor=0.0,
+            gamma=1.0,
+        )
+    else:
+        raise ValueError(f"Unknown color_scale={color_scale!r}")
+
+    colors = [
+        cmap(float(v)) if rate > 0 else CLIFFORD_GATE_COLOR
+        for rate, v in zip(qubit_rates, color_intensities)
+    ]
 
     bars = ax.barh(
         qubit_labels,
@@ -79,15 +124,19 @@ def plot_qubit_error_bar(
     # Value labels on bars
     for bar, rate in zip(bars, qubit_rates):
         if rate > 0:
+            if show_qualitative_labels:
+                label = f"{rate:.3g}  ({qualitative_burden_label(rate)})"
+            else:
+                label = f"{rate:.3g}"
             ax.text(
                 bar.get_width() + CHART_BAR_VALUE_X_OFFSET,
                 bar.get_y() + bar.get_height() / 2,
-                f"{rate:.3f}",
+                label,
                 va="center", ha="left",
                 fontsize=CHART_VALUE_LABEL_FONT_SIZE, color=WIRE_COLOR,
             )
 
-    ax.set_xlabel("Error rate  (errors / shot)", fontsize=CHART_AXIS_LABEL_FONT_SIZE)
+    ax.set_xlabel("Error events / shot", fontsize=CHART_AXIS_LABEL_FONT_SIZE)
     ax.set_xlim(0, max(qubit_rates.max() * 1.25, 0.01))
     ax.invert_yaxis()
     ax.set_frame_on(False)
@@ -96,7 +145,7 @@ def plot_qubit_error_bar(
     ax.set_axisbelow(True)
 
     ax.set_title(
-        title or f"Per-qubit error rate — {result.n_shots} shots",
+        title or f"Per-qubit error events / shot — {result.n_shots} shots",
         fontsize=CHART_TITLE_FONT_SIZE, pad=CHART_TITLE_PAD,
     )
 
@@ -104,17 +153,21 @@ def plot_qubit_error_bar(
     return fig
 
 
-def plot_fidelity_decay(
+def plot_zero_error_survival_decay(
     depth_results: List[AggregateResult] | Sequence[List[AggregateResult]],
     labels: Optional[List[str]] = None,
     title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    ylim: Optional[tuple] = None,
     ax: Optional[plt.Axes] = None,
-    figsize: tuple = (7, 4),
+    figsize: tuple = CHART_DEFAULT_FIGSIZE,
 ) -> plt.Figure:
     """
-    Gate depth vs. fidelity estimate chart.
+    Gate depth vs. zero-error survival probability chart.
 
-    Fidelity proxy: fraction of shots with zero total errors at each depth.
+    Zero-error survival: fraction of shots with zero sampled error events at each
+    depth.  This is a noise-burden diagnostic, not a state or process fidelity.
 
     Parameters
     ----------
@@ -122,9 +175,12 @@ def plot_fidelity_decay(
                     ManyShotRunner.run_depth_sweep(), or a list of such lists
                     (multiple curves, e.g. before/after suppression).
     labels        : Curve labels for the legend (required when multiple curves).
-    title         : Optional figure title
-    ax            : Existing Axes; creates a new figure if None
-    figsize       : Figure size when creating a new figure
+    title         : Figure title.  Defaults to "Zero-error survival vs. circuit depth".
+    xlabel        : x-axis label.  Defaults to "Gate depth".
+    ylabel        : y-axis label.  Defaults to metric description.
+    ylim          : (bottom, top) y-axis limits.  Defaults to CHART_PROBABILITY_YLIM.
+    ax            : Existing Axes; creates a new figure if None.
+    figsize       : Figure size when creating a new figure.
 
     Returns
     -------
@@ -132,6 +188,11 @@ def plot_fidelity_decay(
     """
     if not depth_results:
         raise ValueError("depth_results must not be empty")
+
+    title = title or "Zero-error survival vs. circuit depth"
+    xlabel = xlabel or "Gate depth"
+    ylabel = ylabel or "Zero-error survival probability\n(zero-error shot fraction)"
+    ylim = ylim or CHART_PROBABILITY_YLIM
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -149,13 +210,13 @@ def plot_fidelity_decay(
 
     for i, curve in enumerate(curves):
         depths = list(range(1, len(curve) + 1))
-        fidelities = [r.zero_error_fraction for r in curve]
+        survival = [r.zero_error_fraction for r in curve]
         label = labels[i] if labels and i < len(labels) else f"Run {i + 1}"
         color = default_colors[i % len(default_colors)]
         linestyle = default_styles[i % len(default_styles)]
 
         ax.plot(
-            depths, fidelities,
+            depths, survival,
             color=color,
             linestyle=linestyle,
             linewidth=CHART_LINE_WIDTH,
@@ -164,9 +225,9 @@ def plot_fidelity_decay(
             label=label,
         )
 
-    ax.set_xlabel("Gate depth", fontsize=CHART_AXIS_LABEL_FONT_SIZE)
-    ax.set_ylabel("Fidelity estimate\n(zero-error shot fraction)", fontsize=CHART_AXIS_LABEL_FONT_SIZE)
-    ax.set_ylim(CHART_FIDELITY_YLIM_BOTTOM, CHART_FIDELITY_YLIM_TOP)
+    ax.set_xlabel(xlabel, fontsize=CHART_AXIS_LABEL_FONT_SIZE)
+    ax.set_ylabel(ylabel, fontsize=CHART_AXIS_LABEL_FONT_SIZE)
+    ax.set_ylim(*ylim)
     ax.set_xlim(0.5, max(len(c) for c in curves) + 0.5)
     ax.xaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
     ax.yaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
@@ -176,7 +237,29 @@ def plot_fidelity_decay(
     if len(curves) > 1 or labels:
         ax.legend(fontsize=CHART_VALUE_LABEL_FONT_SIZE, frameon=False)
 
-    ax.set_title(title or "Fidelity decay vs. circuit depth", fontsize=CHART_TITLE_FONT_SIZE, pad=CHART_TITLE_PAD)
+    ax.set_title(title, fontsize=CHART_TITLE_FONT_SIZE, pad=CHART_TITLE_PAD)
 
     fig.tight_layout()
     return fig
+
+
+def plot_fidelity_decay(
+    depth_results: List[AggregateResult] | Sequence[List[AggregateResult]],
+    labels: Optional[List[str]] = None,
+    title: Optional[str] = None,
+    ax: Optional[plt.Axes] = None,
+    figsize: tuple = CHART_DEFAULT_FIGSIZE,
+) -> plt.Figure:
+    """Deprecated. Use plot_zero_error_survival_decay instead.
+
+    This function historically plotted zero_error_fraction under the name
+    "fidelity", which is a physics mislabeling.  It is kept as a compatibility
+    shim only; all arguments are forwarded unchanged.
+    """
+    return plot_zero_error_survival_decay(
+        depth_results,
+        labels=labels,
+        title=title,
+        ax=ax,
+        figsize=figsize,
+    )

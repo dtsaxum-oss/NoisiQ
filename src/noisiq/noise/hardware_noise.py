@@ -48,6 +48,7 @@ Example:
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
@@ -166,108 +167,34 @@ class HardwareProfile:
     typical for H2). Zero for most superconducting and ion-trap platforms."""
 
     idle_coherent_epsilon: float = 0.0
-    """Coherent Z-rotation angle (radians) accumulated per IDLE gate duration
-    due to low-frequency (1/f) dephasing noise that DD can refocus.
-    When non-zero, to_noise_model() appends a CoherentRotation('Z', ε) to
-    each IDLE channel, giving DD an error source to refocus.  The Markovian
-    T2 channel is retained alongside it.  Typical demo value: 0.05–0.10 rad
-    per ~50 ns IDLE slot (≈ 1–2 MHz quasi-static Z detuning)."""
+    """Standard deviation (radians) of the per-shot quasi-static Z detuning
+    accumulated during each IDLE slot due to low-frequency (1/f) noise that
+    DD can refocus.  When non-zero, to_noise_model() appends a noise channel
+    to each IDLE op alongside the Markovian T2 channel.  The channel type
+    depends on ``representation``:
+
+      - ``"coherent"``     → StochasticCoherentRotation('Z', ε): draws a
+                              fresh angle from Normal(0, ε) each shot so the
+                              trajectory average correctly loses purity and DD
+                              demonstrates a genuine improvement.
+      - ``"pauli_twirl"``  → PauliError(p_z=sin²(ε)): stochastic Z error
+                              compatible with Pauli-frame backends.
+      - ``None``           → CoherentRotation('Z', ε): deterministic unitary
+                              (backward-compatible; contributes no purity loss).
+
+    Typical value: 0.05–0.10 rad per ~50–60 ns IDLE slot
+    (≈ 1–2 MHz quasi-static Z detuning on superconducting hardware)."""
 
     # ------------------------------------------------------------------
     # Noise model builder
     # ------------------------------------------------------------------
-
-    def to_pauli_noise_model(self, circuit: "Circuit") -> dict:
-        """Build a Pauli noise model for use with ManyShotRunner.
-
-        Converts the hardware's gate error rates, T1 relaxation, and T2
-        coherence time into a per-gate PauliError dict using the standard
-        Pauli-channel approximation:
-
-            1. Gate infidelity → depolarizing noise:
-               p_dep = gate_error / 3
-
-            2. T1 relaxation (amplitude damping Pauli twirl):
-               γ = 1 − exp(−t_gate / T1)
-               p_t1 = γ / 4
-
-            3. T2 dephasing per gate duration → additional Z-error:
-               p_z_t2 = (1 − exp(−2·t_gate / T2)) / 2
-
-            Combined:
-               p_x = p_dep + p_t1
-               p_y = p_dep + p_t1
-               p_z = p_dep + p_t1 + p_z_t2
-
-        The T1 term makes platform comparisons physically accurate: IBM Eagle
-        (T1 ≈ 100 µs) and IonQ Forte (T1 >> 1 s) produce measurably different
-        depolarizing contributions even for equal gate error rates.
-
-        This follows the industry-standard Pauli-twirl approximation used by
-        Stim noise models.  It introduces ~5–10% error vs exact density-matrix
-        simulation but enables fast large-scale multi-shot Clifford simulation.
-
-        Args:
-            circuit: The NoisiQ Circuit to build the noise dict for.
-
-        Returns:
-            Dict mapping operation index (int) → PauliError, ready to pass
-            as noise_config to ManyShotRunner.run().
-        """
-        import numpy as np
-        from .pauli_error import PauliError
-        from ..ir import gates as ir_gates
-        from .idle_fill import idle_pauli_twirl
-
-        noise: dict = {}
-        for op_idx, op in enumerate(circuit.operations):
-            if op.gate is ir_gates.IDLE:
-                if not op.params or "duration_ns" not in op.params:
-                    raise ValueError(
-                        f"IDLE op at index {op_idx} is missing 'duration_ns' in "
-                        f"op.params. Use Circuit.idle() or fill_idle_with_identities()."
-                    )
-                noise[op_idx] = idle_pauli_twirl(
-                    self.t1, self.t2, op.params["duration_ns"]
-                )
-                continue
-
-            if op.gate.num_qubits == 1:
-                p_gate = self.single_qubit_error
-                t_gate = self.gate_times.single_qubit_ns * 1e-9
-            else:
-                p_gate = self.two_qubit_error
-                t_gate = self.gate_times.two_qubit_ns * 1e-9
-
-            p_dep = p_gate / 3.0
-
-            # T1 amplitude-damping Pauli twirl: γ/4 added to each axis
-            gamma = 1.0 - np.exp(-t_gate / self.t1)
-            p_t1 = gamma / 4.0
-
-            p_z_t2 = (1.0 - np.exp(-2.0 * t_gate / self.t2)) / 2.0
-
-            p_x = p_dep + p_t1
-            p_y = p_dep + p_t1
-            p_z = p_dep + p_t1 + p_z_t2
-
-            # Clamp to physical bounds (p_x + p_y + p_z <= 1)
-            total = p_x + p_y + p_z
-            if total > 1.0:
-                scale = 0.99 / total
-                p_x *= scale
-                p_y *= scale
-                p_z *= scale
-
-            noise[op_idx] = PauliError(p_x=p_x, p_y=p_y, p_z=p_z)
-
-        return noise
 
     def to_noise_model(
         self,
         circuit: "Circuit",
         mode: str = "t2",
         representation: "str | None" = None,
+        include_spam: bool = False,
     ) -> dict:
         """Build a per-operation noise dict for TrajectoryBackend or Clifford backends.
 
@@ -290,6 +217,12 @@ class HardwareProfile:
                               "coherent" → CoherentRotation channels preserved.
                                   Forces routing to TrajectoryBackend. Captures
                                   coherent accumulation exactly. Limited to 13 qubits.
+            include_spam:   When True and representation="pauli_twirl", adds a
+                            uniform depolarizing PauliError (p_x=p_y=p_z=spam_error/3)
+                            at the first and last operation index for each qubit,
+                            compounding with any existing gate noise at those positions.
+                            Accepted but silently ignored for other representations.
+                            Default False so all existing call sites remain valid.
 
         Returns:
             Dict mapping operation index (int) → single channel. When representation
@@ -318,6 +251,16 @@ class HardwareProfile:
         # Fully backward compatible with all existing tests and notebooks.
         # ----------------------------------------------------------------
         if representation is None:
+            if self.coherent_fraction > 0:
+                warnings.warn(
+                    f"HardwareProfile '{self.name}' has coherent_fraction="
+                    f"{self.coherent_fraction} set, but this has no effect when "
+                    f"representation is not specified. Pass "
+                    f"representation='pauli_twirl' or representation='coherent' "
+                    f"to include coherent error contributions.",
+                    UserWarning,
+                    stacklevel=2,
+                )
             from ..ir import gates as ir_gates
             from .idle_fill import idle_kraus
             noise: dict = {}
@@ -351,13 +294,21 @@ class HardwareProfile:
         import numpy as np
         from .kraus_channels import CombinedChannel
         from .pauli_error import PauliError
-        from .coherent_errors import CoherentRotation
+        from .coherent_errors import CoherentRotation, StochasticCoherentRotation
         from .correlated_errors import CorrelatedPauliError
         from ..ir import gates as ir_gates
         from .idle_fill import idle_kraus, idle_pauli_twirl
 
+        from ..ir.classical import Measurement as _Measurement, ConditionalOp as _ConditionalOp
+
         noise = {}
         for op_idx, op in enumerate(circuit.operations):
+            # Measurements carry no gate noise — skip entirely
+            if isinstance(op, _Measurement):
+                continue
+            # ConditionalOp wraps a real Operation; unwrap it for gate-noise computation
+            if isinstance(op, _ConditionalOp):
+                op = op.inner
             if op.gate is ir_gates.IDLE:
                 if not op.params or "duration_ns" not in op.params:
                     raise ValueError(
@@ -373,9 +324,20 @@ class HardwareProfile:
                         self.t1, self.t2, op.params["duration_ns"]
                     )
                 if self.idle_coherent_epsilon > 0:
-                    noise[op_idx] = CombinedChannel(
-                        [base_channel, CoherentRotation('Z', self.idle_coherent_epsilon)]
-                    )
+                    if representation == "coherent":
+                        # Quasi-static: sample ε ~ Normal(0, std_dev) per shot so
+                        # different shots produce different states and purity correctly
+                        # degrades. DD can then demonstrate a genuine improvement.
+                        coherent_channel = StochasticCoherentRotation(
+                            'Z', self.idle_coherent_epsilon
+                        )
+                    else:
+                        # representation == "pauli_twirl": convert to a PauliError so
+                        # Pauli-frame backends see the correct error probability.
+                        coherent_channel = CoherentRotation(
+                            'Z', self.idle_coherent_epsilon
+                        ).to_pauli_error()
+                    noise[op_idx] = CombinedChannel([base_channel, coherent_channel])
                 else:
                     noise[op_idx] = base_channel
                 continue
@@ -473,6 +435,45 @@ class HardwareProfile:
                 noise[op_idx] = channels[0]
             elif len(channels) > 1:
                 noise[op_idx] = CombinedChannel(channels)
+
+        # ------------------------------------------------------------------
+        # SPAM: add uniform depolarizing error at first/last op per qubit.
+        # Only active for pauli_twirl; silently ignored for coherent.
+        # ------------------------------------------------------------------
+        if include_spam and representation == "pauli_twirl":
+            from ..ir.circuit import Operation as _Operation
+            spam = self.spam_error / 3.0
+
+            first_op_idx: dict = {}
+            last_op_idx: dict = {}
+            for op_idx, op in enumerate(circuit.operations):
+                if not isinstance(op, _Operation):
+                    continue
+                for q in op.qubits:
+                    if q not in first_op_idx:
+                        first_op_idx[q] = op_idx
+                    last_op_idx[q] = op_idx
+
+            spam_indices = set(first_op_idx.values()) | set(last_op_idx.values())
+            for idx in spam_indices:
+                existing = noise.get(idx)
+                if isinstance(existing, PauliError):
+                    new_px = existing.p_x + spam
+                    new_py = existing.p_y + spam
+                    new_pz = existing.p_z + spam
+                    total = new_px + new_py + new_pz
+                    if total > 1.0:
+                        scale = 0.99 / total
+                        new_px *= scale
+                        new_py *= scale
+                        new_pz *= scale
+                    noise[idx] = PauliError(p_x=new_px, p_y=new_py, p_z=new_pz)
+                elif isinstance(existing, CombinedChannel):
+                    noise[idx] = CombinedChannel(
+                        list(existing.channels) + [PauliError(p_x=spam, p_y=spam, p_z=spam)]
+                    )
+                else:
+                    noise[idx] = PauliError(p_x=spam, p_y=spam, p_z=spam)
 
         return noise
 

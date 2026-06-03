@@ -71,13 +71,13 @@ def test_fill_trailing_disabled_by_default():
 
 
 def test_idle_noise_is_decoherence_only():
-    """to_pauli_noise_model on IDLE returns a PauliError with no depolarizing."""
+    """to_noise_model(representation='pauli_twirl') on IDLE returns a PauliError with no depolarizing."""
     c = Circuit(2)
     c.add_gate(ir.H, (0,), t=0)
     c.add_gate(ir.IDLE, (1,), t=0, params={"duration_ns": 40.0})
 
     profile = get_hardware("ibm_eagle_r3")
-    noise = profile.to_pauli_noise_model(c)
+    noise = profile.to_noise_model(c, representation="pauli_twirl")
 
     expected = idle_pauli_twirl(profile.t1, profile.t2, 40.0)
     actual = noise[1]
@@ -101,6 +101,7 @@ def test_idle_pauli_twirl_probabilities_are_physical():
     assert pe.p_x + pe.p_y + pe.p_z <= 1.0
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_to_noise_model_idle_branch_kraus():
     c = Circuit(1)
     c.add_gate(ir.H, (0,), t=0)
@@ -117,7 +118,7 @@ def test_idle_missing_duration_raises():
 
     profile = get_hardware("ibm_eagle_r3")
     with pytest.raises(ValueError, match="duration_ns"):
-        profile.to_pauli_noise_model(c)
+        profile.to_noise_model(c, representation="pauli_twirl")
 
 
 def test_dd_then_fill_composes():

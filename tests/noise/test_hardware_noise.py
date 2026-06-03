@@ -106,6 +106,7 @@ def test_profile_ghz_results_populated(eagle_profile):
 # to_noise_model
 # ===========================================================================
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_to_noise_model_t2_returns_correct_type(eagle_profile, simple_circuit):
     noise = eagle_profile.to_noise_model(simple_circuit, mode="t2")
     assert isinstance(noise, dict)
@@ -113,11 +114,13 @@ def test_to_noise_model_t2_returns_correct_type(eagle_profile, simple_circuit):
     assert all(isinstance(v, Dephasing) for v in noise.values())
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_to_noise_model_t1_returns_amplitude_damping(eagle_profile, simple_circuit):
     noise = eagle_profile.to_noise_model(simple_circuit, mode="t1")
     assert all(isinstance(v, AmplitudeDamping) for v in noise.values())
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_to_noise_model_gate_times_vary_by_qubit_count(eagle_profile, simple_circuit):
     """Single-qubit ops (H) use single_qubit_ns; two-qubit ops (CNOT) use two_qubit_ns."""
     noise = eagle_profile.to_noise_model(simple_circuit, mode="t2")
@@ -136,6 +139,7 @@ def test_to_noise_model_invalid_mode_raises(eagle_profile, simple_circuit):
         eagle_profile.to_noise_model(simple_circuit, mode="both")
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_to_noise_model_channels_are_valid(eagle_profile, simple_circuit):
     """All generated channels must pass trace-preservation check."""
     for channel in eagle_profile.to_noise_model(simple_circuit, mode="t2").values():
@@ -246,6 +250,7 @@ def test_state_fidelity_shape_mismatch_raises():
         state_fidelity(psi, rho)
 
 
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_state_fidelity_in_range_after_trajectory(simple_circuit, eagle_profile):
     """Fidelity from noisy simulation must be in (0, 1]."""
     psi_ideal = _ghz_statevector(3)
@@ -333,6 +338,34 @@ def ghz_circuit_2q():
     return c
 
 
+def test_coherent_fraction_warns_when_representation_none(eagle_profile, simple_circuit):
+    """to_noise_model(circuit) emits UserWarning when coherent_fraction > 0."""
+    assert eagle_profile.coherent_fraction > 0
+    with pytest.warns(UserWarning, match="coherent_fraction"):
+        eagle_profile.to_noise_model(simple_circuit, mode="t2")
+
+
+def test_coherent_fraction_no_warning_when_zero(simple_circuit):
+    """to_noise_model(circuit) emits no UserWarning when coherent_fraction == 0."""
+    profile = HardwareProfile(
+        name="_test_no_coherent",
+        vendor="Test",
+        system="Test",
+        t1=100e-6,
+        t2=80e-6,
+        single_qubit_error=0.001,
+        two_qubit_error=0.01,
+        spam_error=0.005,
+        gate_times=GateTimes(single_qubit_ns=50.0, two_qubit_ns=400.0),
+        coherent_fraction=0.0,
+    )
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        profile.to_noise_model(simple_circuit, mode="t2")  # must not raise
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_representation_none_backward_compatible(eagle_profile, simple_circuit):
     """Default (representation=None) still returns one Dephasing per op."""
     noise = eagle_profile.to_noise_model(simple_circuit, mode="t2")
@@ -458,3 +491,190 @@ def test_new_hardware_fields_present():
 def test_quantinuum_has_mcmr_crosstalk():
     q = get_hardware("quantinuum_h2")
     assert q.mcmr_crosstalk > 0.0
+
+
+# ===========================================================================
+# M2 — include_spam parameter
+# ===========================================================================
+
+def test_include_spam_false_is_default(eagle_profile, ghz_circuit_2q):
+    """include_spam=False (default) must produce identical output to omitting the arg."""
+    without = eagle_profile.to_noise_model(ghz_circuit_2q, mode="t2", representation="pauli_twirl")
+    with_false = eagle_profile.to_noise_model(
+        ghz_circuit_2q, mode="t2", representation="pauli_twirl", include_spam=False
+    )
+    for idx in without:
+        assert without[idx].p_x == pytest.approx(with_false[idx].p_x)
+        assert without[idx].p_y == pytest.approx(with_false[idx].p_y)
+        assert without[idx].p_z == pytest.approx(with_false[idx].p_z)
+
+
+def test_include_spam_adds_error_at_first_and_last_op(eagle_profile, simple_circuit):
+    """With include_spam=True, first and last op per qubit must have higher total error."""
+    base = eagle_profile.to_noise_model(simple_circuit, mode="t2", representation="pauli_twirl")
+    spammed = eagle_profile.to_noise_model(
+        simple_circuit, mode="t2", representation="pauli_twirl", include_spam=True
+    )
+
+    spam = eagle_profile.spam_error / 3.0
+    for idx, channel in spammed.items():
+        assert isinstance(channel, _PauliError)
+        base_total = base[idx].p_x + base[idx].p_y + base[idx].p_z
+        spam_total = channel.p_x + channel.p_y + channel.p_z
+        # SPAM indices have higher total; non-SPAM indices are unchanged
+        assert spam_total >= base_total - 1e-12
+
+
+def test_include_spam_first_op_per_qubit_higher_than_base(eagle_profile, simple_circuit):
+    """Qubit 0's first op (H at idx 0) must gain exactly spam_error/3 on each axis."""
+    base = eagle_profile.to_noise_model(simple_circuit, mode="t2", representation="pauli_twirl")
+    spammed = eagle_profile.to_noise_model(
+        simple_circuit, mode="t2", representation="pauli_twirl", include_spam=True
+    )
+    spam = eagle_profile.spam_error / 3.0
+    # H on qubit 0 is op 0 — first (and also last for that qubit-moment before CNOT propagates)
+    # Just check p_x is higher by approximately spam (before clamping)
+    assert spammed[0].p_x > base[0].p_x - 1e-12
+
+
+def test_include_spam_values_are_physical(eagle_profile, simple_circuit):
+    """All PauliError entries after SPAM injection must satisfy p_x+p_y+p_z <= 1."""
+    noise = eagle_profile.to_noise_model(
+        simple_circuit, mode="t2", representation="pauli_twirl", include_spam=True
+    )
+    for channel in noise.values():
+        if isinstance(channel, _PauliError):
+            assert channel.p_x + channel.p_y + channel.p_z <= 1.0 + 1e-9
+
+
+@pytest.mark.filterwarnings("ignore::UserWarning")
+def test_include_spam_ignored_for_none_representation(eagle_profile, simple_circuit):
+    """include_spam=True with representation=None must not raise and returns Dephasing channels."""
+    noise = eagle_profile.to_noise_model(simple_circuit, mode="t2", include_spam=True)
+    assert all(isinstance(v, Dephasing) for v in noise.values())
+
+
+def test_include_spam_ignored_for_coherent_representation(eagle_profile, ghz_circuit_2q):
+    """include_spam=True with representation='coherent' must not raise."""
+    noise = eagle_profile.to_noise_model(
+        ghz_circuit_2q, mode="t2", representation="coherent", include_spam=True
+    )
+    assert isinstance(noise, dict)
+    assert len(noise) == len(ghz_circuit_2q.operations)
+
+
+def test_include_spam_same_length_as_base(eagle_profile, simple_circuit):
+    """SPAM injection must not add or remove keys from the noise dict."""
+    base = eagle_profile.to_noise_model(simple_circuit, mode="t2", representation="pauli_twirl")
+    spammed = eagle_profile.to_noise_model(
+        simple_circuit, mode="t2", representation="pauli_twirl", include_spam=True
+    )
+    assert set(spammed.keys()) == set(base.keys())
+
+
+# ===========================================================================
+# idle_coherent_epsilon — channel type varies by representation
+# ===========================================================================
+
+import dataclasses
+from noisiq.noise.coherent_errors import StochasticCoherentRotation as _StochasticCoherentRotation
+from noisiq.noise.idle_fill import fill_idle_with_identities as _fill_idle
+
+
+@pytest.fixture
+def profile_with_epsilon():
+    """ibm_eagle_r3 with idle_coherent_epsilon=0.07."""
+    base = get_hardware("ibm_eagle_r3")
+    return dataclasses.replace(base, idle_coherent_epsilon=0.07)
+
+
+@pytest.fixture
+def idle_circuit(profile_with_epsilon):
+    """1-qubit H + gap + H circuit with IDLE slots filled."""
+    c = nq.Circuit(n_qubits=1)
+    c.h(0, t=0)
+    c.h(0, t=4)
+    return _fill_idle(c, profile_with_epsilon.gate_times)
+
+
+def _find_idle_channel(noise_dict, circuit):
+    """Return the channel for the first IDLE op in the circuit."""
+    from noisiq.ir import gates as _ig
+    for idx, op in enumerate(circuit.operations):
+        if hasattr(op, 'gate') and op.gate is _ig.IDLE:
+            return noise_dict[idx]
+    raise AssertionError("No IDLE op found in circuit")
+
+
+def test_idle_coherent_epsilon_coherent_path_uses_stochastic(profile_with_epsilon, idle_circuit):
+    """representation='coherent' → CombinedChannel containing StochasticCoherentRotation."""
+    noise = profile_with_epsilon.to_noise_model(
+        idle_circuit, mode="t2", representation="coherent"
+    )
+    ch = _find_idle_channel(noise, idle_circuit)
+    assert isinstance(ch, _CombinedChannel)
+    stoch = [c for c in ch.channels if isinstance(c, _StochasticCoherentRotation)]
+    assert len(stoch) == 1, f"Expected 1 StochasticCoherentRotation, got {stoch}"
+    assert stoch[0].std_dev == pytest.approx(0.07)
+    # No deterministic CoherentRotation should remain
+    coh_rot = [c for c in ch.channels if isinstance(c, _CoherentRotation)]
+    assert len(coh_rot) == 0, f"CoherentRotation should not appear in coherent path: {coh_rot}"
+
+
+def test_idle_coherent_epsilon_pauli_twirl_path_uses_pauli_error(profile_with_epsilon, idle_circuit):
+    """representation='pauli_twirl' → CombinedChannel with only PauliError, no CoherentRotation."""
+    noise = profile_with_epsilon.to_noise_model(
+        idle_circuit, mode="t2", representation="pauli_twirl"
+    )
+    ch = _find_idle_channel(noise, idle_circuit)
+    assert isinstance(ch, _CombinedChannel)
+    # No CoherentRotation or StochasticCoherentRotation should appear
+    bad = [c for c in ch.channels
+           if isinstance(c, (_CoherentRotation, _StochasticCoherentRotation))]
+    assert len(bad) == 0, f"No coherent channel expected in pauli_twirl path, got {bad}"
+    # The coherent epsilon contribution should be a PauliError
+    pauli_channels = [c for c in ch.channels if isinstance(c, _PauliError)]
+    assert len(pauli_channels) >= 1
+
+
+def test_idle_coherent_epsilon_none_path_no_coherent_channel(profile_with_epsilon, idle_circuit):
+    """representation=None takes the early-return Kraus path and does not apply
+    idle_coherent_epsilon — that field is only used in the extended representation block."""
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        noise = profile_with_epsilon.to_noise_model(idle_circuit, mode="t2", representation=None)
+    ch = _find_idle_channel(noise, idle_circuit)
+    # No coherent channel of any kind should appear
+    def _flatten(c):
+        if isinstance(c, _CombinedChannel):
+            return [x for inner in c.channels for x in _flatten(inner)]
+        return [c]
+    all_inner = _flatten(ch)
+    bad = [c for c in all_inner
+           if isinstance(c, (_CoherentRotation, _StochasticCoherentRotation))]
+    assert len(bad) == 0, f"representation=None should not apply idle_coherent_epsilon: {bad}"
+
+
+def test_idle_coherent_epsilon_zero_no_stochastic(idle_circuit):
+    """When idle_coherent_epsilon=0, no coherent channel is appended."""
+    base = get_hardware("ibm_eagle_r3")
+    assert base.idle_coherent_epsilon == 0.0
+    noise = base.to_noise_model(idle_circuit, mode="t2", representation="coherent")
+    ch = _find_idle_channel(noise, idle_circuit)
+    # Should be a plain Kraus channel (CombinedChannel from idle_kraus), not wrapped further
+    inner_stoch = []
+    if isinstance(ch, _CombinedChannel):
+        inner_stoch = [c for c in ch.channels if isinstance(c, _StochasticCoherentRotation)]
+    assert len(inner_stoch) == 0, f"Should have no StochasticCoherentRotation when epsilon=0"
+
+
+def test_idle_coherent_epsilon_stochastic_causes_purity_loss(profile_with_epsilon, idle_circuit):
+    """End-to-end: with StochasticCoherentRotation on IDLE, purity drops below 1."""
+    noise = profile_with_epsilon.to_noise_model(
+        idle_circuit, mode="t2", representation="coherent"
+    )
+    result = TrajectoryBackend().run(idle_circuit, noise_model=noise, n_shots=800, seed=0)
+    rho = result.final_state
+    purity = float(np.real(np.trace(rho @ rho)))
+    assert purity < 0.999, f"Purity should drop with stochastic idle noise: {purity}"

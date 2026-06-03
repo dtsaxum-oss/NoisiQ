@@ -7,7 +7,10 @@ Covers:
 - All supported single-qubit gates are parsed
 - Both two-qubit gates (cx/cz) are parsed
 - Multiple qreg declarations are concatenated in declaration order
-- barrier, measure, reset, creg are silently ignored
+- barrier is silently ignored; reset raises QASMParseError
+- creg declarations become ClassicalRegister objects on the circuit
+- measure statements produce Measurement ops (M5)
+- if (creg==val) statements produce ConditionalOp ops (M5)
 - Line comments are stripped
 - Gate ordering matches QASM source order
 - Error: no qreg declaration
@@ -141,7 +144,7 @@ def test_multiple_qregs_qubit_offset():
 
 
 # ---------------------------------------------------------------------------
-# Ignored statements
+# Ignored statements / explicitly rejected statements
 # ---------------------------------------------------------------------------
 
 def test_barrier_ignored():
@@ -150,11 +153,22 @@ def test_barrier_ignored():
     assert len(c.operations) == 2
 
 
-def test_measure_ignored():
+def test_reset_raises():
+    qasm = "OPENQASM 2.0;\nqreg q[1];\ncreg c[1];\nmeasure q[0] -> c[0];\nreset q[0];"
+    with pytest.raises(QASMParseError, match="reset"):
+        from_qasm(qasm)
+
+
+def test_measure_parsed_as_measurement_op():
+    """measure q[i] -> c[j] now produces a Measurement op (M5)."""
+    from noisiq.ir.classical import Measurement
     qasm = "OPENQASM 2.0;\nqreg q[1];\ncreg c[1];\nh q[0];\nmeasure q[0] -> c[0];"
     c = from_qasm(qasm)
-    assert len(c.operations) == 1
+    assert len(c.operations) == 2
     assert c.operations[0].gate == ir_gates.H
+    assert isinstance(c.operations[1], Measurement)
+    assert c.operations[1].qubit == 0
+    assert c.operations[1].cbit.index == 0
 
 
 def test_comments_stripped():
@@ -213,3 +227,36 @@ def test_custom_gate_definition_raises():
 def test_duplicate_qreg_raises():
     with pytest.raises(QASMParseError, match="Duplicate"):
         from_qasm("OPENQASM 2.0;\nqreg q[2];\nqreg q[3];")
+
+
+def test_gate_qreg_local_out_of_range_raises():
+    """Gate qubit index beyond declared qreg size must raise QASMParseError."""
+    qasm = "OPENQASM 2.0;\nqreg q[2];\nh q[5];"
+    with pytest.raises(QASMParseError, match="out of range"):
+        from_qasm(qasm)
+
+
+def test_measure_qreg_local_out_of_range_raises():
+    """measure q[i] where i >= qreg size must raise QASMParseError."""
+    qasm = "OPENQASM 2.0;\nqreg q[2];\ncreg c[1];\nmeasure q[3] -> c[0];"
+    with pytest.raises(QASMParseError, match="out of range"):
+        from_qasm(qasm)
+
+
+def test_multi_qreg_index_within_first_only():
+    """Two qregs: index into second qreg must not bleed into first qreg's range."""
+    # q[2] has size 2 (indices 0-1), r[2] has size 2 (global 2-3).
+    # h r[1] → global qubit 3 — valid.
+    qasm = "OPENQASM 2.0;\nqreg q[2];\nqreg r[2];\nh r[1];"
+    c = from_qasm(qasm)
+    assert c.n_qubits == 4
+    from noisiq.ir.circuit import Operation
+    gate_op = next(op for op in c.operations if isinstance(op, Operation))
+    assert gate_op.qubits == (3,)
+
+
+def test_multi_qreg_out_of_range_second_raises():
+    """r[5] is out of range for r declared as r[2]."""
+    qasm = "OPENQASM 2.0;\nqreg q[2];\nqreg r[2];\nh r[5];"
+    with pytest.raises(QASMParseError, match="out of range"):
+        from_qasm(qasm)
