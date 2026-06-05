@@ -64,6 +64,8 @@ def plot_hardware_comparison(
     profile: HardwareProfile,
     title: Optional[str] = None,
     figsize: Optional[tuple] = None,
+    noise_config: Optional[dict] = None,
+    heat_scale: str = "absolute_log",
 ) -> plt.Figure:
     """Composite figure: error heatmap + fidelity comparison panel.
 
@@ -108,27 +110,38 @@ def plot_hardware_comparison(
         hspace=HARDWARE_CMP_SUBPLOT_HSPACE,
     )
 
-    gs = gridspec.GridSpec(2, 1, figure=fig, height_ratios=HARDWARE_CMP_HEIGHT_RATIOS)
+    gs = gridspec.GridSpec(
+        2, 1,
+        figure=fig,
+        height_ratios=HARDWARE_CMP_HEIGHT_RATIOS,
+        left=HARDWARE_CMP_SUBPLOT_LEFT,
+        right=HARDWARE_CMP_SUBPLOT_RIGHT,
+        top=HARDWARE_CMP_SUBPLOT_TOP,
+        bottom=HARDWARE_CMP_SUBPLOT_BOTTOM,
+        hspace=HARDWARE_CMP_SUBPLOT_HSPACE,
+    )
+
+    if noise_config is None:
+        noise_config = profile.to_pauli_noise_model(circuit)
 
     # ── Top: error heatmap ────────────────────────────────────────────────────
     ax_heat = fig.add_subplot(gs[0])
     plot_error_heatmap(
         result,
         circuit,
+        noise_config=noise_config,
+        heat_scale=heat_scale,
         title=f"{profile.system}  —  {result.n_shots} shots,  "
               f"{n_qubits}-qubit GHZ",
         ax=ax_heat,
+        finalize_layout=False,
+        idle_cbar_bbox_y=-0.14,
     )
 
     # ── Bottom: fidelity comparison ───────────────────────────────────────────
     ax_bar = fig.add_subplot(gs[1])
     _draw_fidelity_comparison(ax_bar, result, profile, circuit.n_qubits)
 
-    fig.suptitle(
-        title or f"NoisiQ  ·  {profile.vendor} {profile.system}  noise model",
-        fontsize=HARDWARE_CMP_SUPTITLE_FONT_SIZE,
-        y=HARDWARE_CMP_SUPTITLE_Y,
-    )
     return fig
 
 

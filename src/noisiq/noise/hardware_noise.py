@@ -189,6 +189,15 @@ class HardwareProfile:
     # Noise model builder
     # ------------------------------------------------------------------
 
+    def to_pauli_noise_model(self, circuit: "Circuit", include_spam: bool = False) -> dict:
+        """Build a Pauli noise model for use with ManyShotRunner.
+
+        Alias/wrapper for to_noise_model with representation='pauli_twirl'.
+        """
+        return self.to_noise_model(
+            circuit, mode="t2", representation="pauli_twirl", include_spam=include_spam
+        )
+
     def to_noise_model(
         self,
         circuit: "Circuit",

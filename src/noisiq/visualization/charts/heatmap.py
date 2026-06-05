@@ -354,6 +354,8 @@ def _add_downstream_burden_colorbar(
     cmap = get_halo_colormap()
     if heat_scale == "relative":
         _norm = mcolors.Normalize(vmin=0.0, vmax=1.0)
+    elif heat_scale == "absolute_log":
+        _norm = mcolors.LogNorm(vmin=max(1e-10, heat_vmin), vmax=max(1e-9, heat_vmax))
     else:
         _norm = mcolors.Normalize(vmin=heat_vmin, vmax=heat_vmax)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=_norm)
@@ -401,13 +403,21 @@ def _add_downstream_burden_colorbar(
                 mid = 0.5 * (min_nonzero + peak)
 
                 if has_zero:
-                    raw_ticks = [0.0, min_nonzero, mid, peak]
-                    labels = [
-                        "none\n0",
-                        f"min\n{_format_burden_value(min_nonzero)}",
-                        f"mid\n{_format_burden_value(mid)}",
-                        f"max\n{_format_burden_value(peak)}",
-                    ]
+                    if min_nonzero / peak < 0.25:
+                        raw_ticks = [0.0, mid, peak]
+                        labels = [
+                            "none\n0",
+                            f"mid\n{_format_burden_value(mid)}",
+                            f"max\n{_format_burden_value(peak)}",
+                        ]
+                    else:
+                        raw_ticks = [0.0, min_nonzero, mid, peak]
+                        labels = [
+                            "none\n0",
+                            f"min\n{_format_burden_value(min_nonzero)}",
+                            f"mid\n{_format_burden_value(mid)}",
+                            f"max\n{_format_burden_value(peak)}",
+                        ]
                 else:
                     raw_ticks = [min_nonzero, mid, peak]
                     labels = [
@@ -423,6 +433,46 @@ def _add_downstream_burden_colorbar(
                 ],
                 fontsize=HEATMAP_LABEL_FONT_SIZE,
             )
+    elif heat_scale == "absolute_log":
+        # Generate decade ticks between heat_vmin and heat_vmax
+        dec_start = int(np.floor(np.log10(heat_vmin)))
+        dec_end = int(np.ceil(np.log10(heat_vmax)))
+        raw_ticks = [10.0**i for i in range(dec_start, dec_end + 1)]
+        raw_ticks = [t for t in raw_ticks if heat_vmin <= t <= heat_vmax]
+        if not raw_ticks:
+            raw_ticks = [heat_vmin, heat_vmax]
+
+        if show_qualitative_ticks:
+            labels = []
+            for t in raw_ticks:
+                if t < 1e-3:
+                    lbl = f"trace\n{_format_burden_value(t)}"
+                elif t < 1e-2:
+                    lbl = f"low\n{_format_burden_value(t)}"
+                elif t < 1e-1:
+                    lbl = f"mod\n{_format_burden_value(t)}"
+                else:
+                    lbl = f"high\n{_format_burden_value(t)}"
+                labels.append(lbl)
+        else:
+            labels = [_format_burden_value(t) for t in raw_ticks]
+
+        cbar.set_ticks(raw_ticks)
+        cbar.set_ticklabels(labels, fontsize=HEATMAP_LABEL_FONT_SIZE)
+    else:  # absolute linear
+        mid = 0.5 * (heat_vmin + heat_vmax)
+        raw_ticks = [heat_vmin, mid, heat_vmax]
+        if show_qualitative_ticks:
+            labels = [
+                f"trace\n{_format_burden_value(heat_vmin)}",
+                f"mid\n{_format_burden_value(mid)}",
+                f"high\n{_format_burden_value(heat_vmax)}",
+            ]
+        else:
+            labels = [_format_burden_value(t) for t in raw_ticks]
+
+        cbar.set_ticks(raw_ticks)
+        cbar.set_ticklabels(labels, fontsize=HEATMAP_LABEL_FONT_SIZE)
 
 
 def _add_idle_decoherence_colorbar(
@@ -431,6 +481,7 @@ def _add_idle_decoherence_colorbar(
     *,
     segments: list[WireSegment],
     raw_vals: list[float],
+    bbox_y: Optional[float] = None,
 ) -> None:
     """Add the idle T1/T2 decoherence colorbar.
 
@@ -469,13 +520,22 @@ def _add_idle_decoherence_colorbar(
         else:
             mid = 0.5 * (min_nonzero + peak)
             if has_zero:
-                raw_ticks = [0.0, min_nonzero, mid, peak]
-                labels = [
-                    "none\n0",
-                    f"min\n{_format_decoherence_value(min_nonzero)}",
-                    f"mid\n{_format_decoherence_value(mid)}",
-                    f"max\n{_format_decoherence_value(peak)}",
-                ]
+                vis_min = _wire_visual_tick_position(min_nonzero, peak)
+                if vis_min < 0.50:
+                    raw_ticks = [0.0, mid, peak]
+                    labels = [
+                        "none\n0",
+                        f"mid\n{_format_decoherence_value(mid)}",
+                        f"max\n{_format_decoherence_value(peak)}",
+                    ]
+                else:
+                    raw_ticks = [0.0, min_nonzero, mid, peak]
+                    labels = [
+                        "none\n0",
+                        f"min\n{_format_decoherence_value(min_nonzero)}",
+                        f"mid\n{_format_decoherence_value(mid)}",
+                        f"max\n{_format_decoherence_value(peak)}",
+                    ]
             else:
                 raw_ticks = [min_nonzero, mid, peak]
                 labels = [
@@ -513,11 +573,11 @@ def _add_idle_decoherence_colorbar(
     cbar_wire.set_ticks(vis_ticks)
     cbar_wire.set_ticklabels(labels, fontsize=IDLE_CBAR_TICK_FONT_SIZE)
 
-    cbar_wire.set_label(
+    cax.set_title(
         IDLE_CBAR_LABEL,
         fontsize=IDLE_CBAR_LABEL_FONT_SIZE,
         color=IDLE_CBAR_LABEL_COLOR,
-        labelpad=IDLE_CBAR_LABEL_PAD,
+        pad=4.0,
     )
 
     positive_segments = [
@@ -569,6 +629,7 @@ def plot_error_heatmap(
     impact_metric: Literal["expected", "worst_case"] = "expected",
     finalize_layout: bool = True,
     purity_rho: Optional[np.ndarray] = None,
+    idle_cbar_bbox_y: Optional[float] = None,
 ) -> plt.Figure:
     """Draw the circuit with halo-color effects around gate boxes and
     soft wire-segment halos for idle-time decoherence.
@@ -842,6 +903,7 @@ def plot_error_heatmap(
             ax,
             segments=segments,
             raw_vals=wire_raw_vals,
+            bbox_y=idle_cbar_bbox_y,
         )
 
     # --- Axes formatting ---

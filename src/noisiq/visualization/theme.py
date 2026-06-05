@@ -127,6 +127,9 @@ _DOWNSTREAM_BURDEN_COLORMAP = mcolors.LinearSegmentedColormap.from_list(
 # Gate/qubit impact halos use the red sequential map.
 _HALO_COLORMAP = _DOWNSTREAM_BURDEN_COLORMAP
 
+HALO_ZERO_COLOR: str = DOWNSTREAM_BURDEN_ZERO_COLOR
+HALO_MAX_COLOR: str = DOWNSTREAM_BURDEN_MAX_COLOR
+
 HALO_ALPHA: float = 0.65            # transparency of the halo patch
 HALO_GAMMA: float = 1.0             # power applied after range-normalization (1.0 = linear;
                                     # increase to compress high end, decrease to boost low end)
@@ -312,15 +315,15 @@ HEATMAP_PANEL_HSPACE: float = 1.4              # vertical gap between rows (frac
 # ---------------------------------------------------------------------------
 
 HARDWARE_CMP_HEATMAP_WIDTH_PAD: float = 2.0    # added to n_layers*CIRCUIT_WIDTH_PER_LAYER for figure width
-HARDWARE_CMP_ASPECT_RATIO: float = 0.9         # figure height = figure width × this
+HARDWARE_CMP_ASPECT_RATIO: float = 0.65         # figure height = figure width × this
 HARDWARE_CMP_HEIGHT_RATIOS: list = [2.2, 1.0]  # gridspec row heights [heatmap, comparison panel]
 HARDWARE_CMP_SUBPLOT_LEFT: float = 0.12
 HARDWARE_CMP_SUBPLOT_RIGHT: float = 0.95
-HARDWARE_CMP_SUBPLOT_TOP: float = 0.90
-HARDWARE_CMP_SUBPLOT_BOTTOM: float = 0.08
-HARDWARE_CMP_SUBPLOT_HSPACE: float = 0.45
+HARDWARE_CMP_SUBPLOT_TOP: float = 0.92
+HARDWARE_CMP_SUBPLOT_BOTTOM: float = 0.10
+HARDWARE_CMP_SUBPLOT_HSPACE: float = 1.10
 HARDWARE_CMP_SUPTITLE_FONT_SIZE: int = 12      # CHART_TITLE_FONT_SIZE + 1
-HARDWARE_CMP_SUPTITLE_Y: float = 0.97
+HARDWARE_CMP_SUPTITLE_Y: float = 0.96
 HARDWARE_CMP_BAR_ALPHA: float = 0.85
 HARDWARE_CMP_NOTE_X_OFFSET: float = 0.005      # x-gap between bar end and fidelity note label
 HARDWARE_CMP_NOTE_FONT_SIZE: float = 7.5
