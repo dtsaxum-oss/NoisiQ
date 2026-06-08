@@ -29,26 +29,28 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
 \vspace{0.1in} 
 ]
 
-\section{Introduction}
+\section{Introduction and Motivation (DAVID)}
 \label{sec:intro}
 
-\section{Design Philosophy}
+\section{Design Philosophy (TEDDY)}
 \label{sec:philosophy}
 
-\subsection{Modularity and Expansion}
+\subsection{Modularity and Expansion (TEDDY)}
 \label{subsec:modularity}
 
 \subsection{Teaching Tool}
 \label{subsec:teaching}
 
+\subsection{Straightforward Import / Export}
+
 \begin{comment}
     Def change the name of this - but want to discuss motivation of helping people getting into field learning about QEC etc. Is this even needed?
 \end{comment}
 
-\section{Software Architecture}
+\section{Simulation Architecture (BACKEND-TEDDY)}
 \label{subsec:architecture}
 
-\subsection{Quantum Simulator}
+\subsection{Simulator Handoffs}
 \label{subsec:simulator}
 
 \paragraph{STIM}
@@ -57,44 +59,29 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
 \paragraph{Qiskit}
 \label{paragraph:qiskit}
 
-\subsection{Noise Models}
-\label{subsec:noise}
+\subsection{Noise Types}
+\label{subsec:noise_types}
 
-\begin{comment}
-    User defined from gate level through qubit-qubit interaction and more. (We don't have a "general" where user can just take on a new value tho. I.e. if IBM wanted to add some other noise event that they measured like stray radiation or something, we don't support a way for that to be added right now. But they could just represent it as Pauli with a lower probability or something?) 
-\end{comment}
+\section{Front End Features (DAVID)}
+\label{subsec:frontend}
 
-\paragraph{Hardware Noise}
-\label{paragraph:hardware}
+\subsection{Error Propagation Visualization}
+\label{subsec:animation}
 
-\begin{comment}
-    SPAM, T1 / T2, Coherence, Interaction 
-\end{comment}
+\subsection{Heatmap}
+\label{subsec:heatmap}
 
-\subsection{QASM}
-\label{subsec:qasm}
-
-\begin{comment}
-    Change this from QASM to something "better" for what saying that it can take QASM files 
-\end{comment}
-
-\subsection{Visualization}
-\label{subsec:visualization}
-
-\paragraph{Heatmap}
-\label{paragraph:heatmap}
+\subsection{Interactive Panel}
+\label{subsec:interactive}
 
 \begin{comment}
     Pauli-twirling "backend" for T1 / T2 / Coherent 
 \end{comment}
 
-\subparagraph{Interactive Panel}
-\label{subparagraph:panel}
+\section{Metrics (TEDDY)}
+\label{subsec:metrics}
 
-\paragraph{Animation}
-\label{paragraph:animation}
-
-\section{NoisiQ Examples} %picked these examples, DD obvious, MEK for pauli+clifford+MCM, GHZ for paper reporting and "benchmarking" against, QFT for non-pauli gate abilities
+\section{NoisiQ Examples (DAVID)} %picked these examples, DD obvious, MEK for pauli+clifford+MCM, GHZ for paper reporting and "benchmarking" against, QFT for non-pauli gate abilities
 \label{subsec:metrics}
 
 \subsection{Meier-Eastin-Knill (MEK) State Distillation}
@@ -120,17 +107,8 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
     DD comparison, standardized hardware noise with and without the 4 different styles of DD that we have
 \end{comment}
 
-\paragraph{Hardware Noise Comparison}
-\label{paragraph:hardware_comp}
-\begin{comment}
-    T1 / T2 across different hardware platforms and the effect DD on them 
-\end{comment}
-
 \subsection{Quantum Fourier Transform}
 \label{subsec:phase_estimate}
-
-\section{Metrics}
-\label{subsec:metrics}
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -156,10 +134,10 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
 \end{comment}
 
 
-\section*{Future Work}
+\section*{Future Work (TEDDY-FROM POSTER)}
 \label{subsec:future_work}
 
-\section*{Acknowledgments}
+\section*{Acknowledgments (from poster)}
 
 \appendix
 
@@ -176,5 +154,11 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
 
 \subsection*{Quantum Phase Estimation}
 \label{subsec:dj}
+
+\paragraph{Hardware Noise Comparison}
+\label{paragraph:hardware_comp}
+\begin{comment}
+    T1 / T2 across different hardware platforms and the effect DD on them 
+\end{comment}
 
 \end{document}
