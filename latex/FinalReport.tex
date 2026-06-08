@@ -1,0 +1,180 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[margin=0.75in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{siunitx}
+\usepackage{hyperref}
+\usepackage{physics}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{tikz}
+\usepackage{verbatim}
+\usetikzlibrary{arrows.meta,positioning,calc}
+\usepackage{tabularx}
+
+\title{NoisiQ: Noise-Aware Quantum Circuit Simulation and Visualization}
+\author{David Saxum \& Teddy Jones \\ \small Advised by Dr. Mohamad Niknam \& Dr. Richard Ross \\ \small Final Report to Satisfy Completion of QNTSCI 412 Spring 2026 \\ 
+}
+\date{}
+\begin{document}
+
+\twocolumn[
+\maketitle
+\begin{abstract}
+Noisy intermediate-scale quantum processors are limited not only by aggregate error rates, but also by the physical structure, timing, and propagation behavior of the underlying noise channels. NoisiQ is an open-source Python package for noise-aware quantum circuit simulation and visualization that connects circuit-level algorithm design with hardware-inspired error mechanisms. The package provides an intermediate circuit representation, imports common circuit formats, and routes simulations according to circuit and noise structure: Clifford circuits with Pauli-compatible noise are handled through a stabilizer/Pauli-frame pathway built around Stim, while circuits requiring non-Clifford gates, Kraus channels, coherent rotations, or other non-Pauli effects are handled by an exact state or density-matrix simulation pathway. NoisiQ models Pauli noise, amplitude damping, dephasing, coherent over-rotations, correlated multi-qubit errors, readout and state-preparation errors, and hardware-profile-derived idle decoherence. Its visualization layer translates these mechanisms into interpretable diagnostics, including step-resolved error-propagation animations, gate-level heatmaps, idle-decoherence overlays, interactive circuit inspection panels, and exportable figures or animations. We present the architecture, supported noise models, diagnostic metrics, and representative demonstrations, including GHZ-state hardware-profile comparisons, dynamical decoupling under time-dependent decoherence, and mid-circuit-measurement workflows relevant to quantum error correction. NoisiQ is designed to support both research prototyping and pedagogy by making hardware-aware noise behavior visible at the circuit level.
+\end{abstract}
+\vspace{0.1in} 
+]
+
+\section{Introduction}
+\label{sec:intro}
+
+\section{Design Philosophy}
+\label{sec:philosophy}
+
+\subsection{Modularity and Expansion}
+\label{subsec:modularity}
+
+\subsection{Teaching Tool}
+\label{subsec:teaching}
+
+\begin{comment}
+    Def change the name of this - but want to discuss motivation of helping people getting into field learning about QEC etc. Is this even needed?
+\end{comment}
+
+\section{Software Architecture}
+\label{subsec:architecture}
+
+\subsection{Quantum Simulator}
+\label{subsec:simulator}
+
+\paragraph{STIM}
+\label{paragraph:stim}
+
+\paragraph{Qiskit}
+\label{paragraph:qiskit}
+
+\subsection{Noise Models}
+\label{subsec:noise}
+
+\begin{comment}
+    User defined from gate level through qubit-qubit interaction and more. (We don't have a "general" where user can just take on a new value tho. I.e. if IBM wanted to add some other noise event that they measured like stray radiation or something, we don't support a way for that to be added right now. But they could just represent it as Pauli with a lower probability or something?) 
+\end{comment}
+
+\paragraph{Hardware Noise}
+\label{paragraph:hardware}
+
+\begin{comment}
+    SPAM, T1 / T2, Coherence, Interaction 
+\end{comment}
+
+\subsection{QASM}
+\label{subsec:qasm}
+
+\begin{comment}
+    Change this from QASM to something "better" for what saying that it can take QASM files 
+\end{comment}
+
+\subsection{Visualization}
+\label{subsec:visualization}
+
+\paragraph{Heatmap}
+\label{paragraph:heatmap}
+
+\begin{comment}
+    Pauli-twirling "backend" for T1 / T2 / Coherent 
+\end{comment}
+
+\subparagraph{Interactive Panel}
+\label{subparagraph:panel}
+
+\paragraph{Animation}
+\label{paragraph:animation}
+
+\section{NoisiQ Examples} %picked these examples, DD obvious, MEK for pauli+clifford+MCM, GHZ for paper reporting and "benchmarking" against, QFT for non-pauli gate abilities
+\label{subsec:metrics}
+
+\subsection{Meier-Eastin-Knill (MEK) State Distillation}
+\label{subsec:mek}
+
+\begin{comment}
+    Useful to show mid-circuit-measurement + QEC style work 
+\end{comment}
+
+\subsection{Greenberger-Horne-Zeilinger (GHZ) State}
+\label{subsec:GHZ}
+
+\begin{comment}
+    Compare different hardware GHZ noise papers to our simulator, report the simulated fidelity vs. hardware (and/ or whatever other metrics the papers share) 
+\end{comment}
+
+\subsection{Dynamical Decoupling}
+\label{subsec:DD}
+
+\paragraph{Sequences}
+\label{paragraph:dd_sequences}
+\begin{comment}
+    DD comparison, standardized hardware noise with and without the 4 different styles of DD that we have
+\end{comment}
+
+\paragraph{Hardware Noise Comparison}
+\label{paragraph:hardware_comp}
+\begin{comment}
+    T1 / T2 across different hardware platforms and the effect DD on them 
+\end{comment}
+
+\subsection{Quantum Fourier Transform}
+\label{subsec:phase_estimate}
+
+\section{Metrics}
+\label{subsec:metrics}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+\bibliographystyle{ieeetr}
+\bibliography{refs}
+
+\begin{comment}
+    Reference list to add / find: 
+    GHZ paper 
+    MEK paper 
+    Qiskit paper
+    STIM paper 
+    Grovers Algorithm
+    DJ Algorithm
+    QFT
+    Quantum Phase Estimation
+    DD
+    Each hardware noise paper
+    Qasm (?) 
+    Pauli-twirling 
+    Papers specific to noise types, i.e. T1 / T2 etc? 
+\end{comment}
+
+
+\section*{Future Work}
+\label{subsec:future_work}
+
+\section*{Acknowledgments}
+
+\appendix
+
+\section*{Supporting Examples / Code}
+\label{sec:supporting_code}
+
+% Maybe mention that the examples here and above are all "hard-coded" and easily callable for ease of using / learning the library. 
+
+\subsection*{Grover's Algorithm}
+\label{subsec:grovers}
+
+\subsection*{Deutsch-Jozsa Algorithm}
+\label{subsec:dj}
+
+\subsection*{Quantum Phase Estimation}
+\label{subsec:dj}
+
+\end{document}
