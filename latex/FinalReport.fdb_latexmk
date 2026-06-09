@@ -1,5 +1,5 @@
 # Fdb version 4
-["bibtex FinalReport"] 0 "FinalReport.aux" "FinalReport.bbl" "FinalReport" 1780980211.19128 0
+["bibtex FinalReport"] 0 "FinalReport.aux" "FinalReport.bbl" "FinalReport" 1780989058.72471 0
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/bibtex/bst/bibtex/ieeetr.bst" 1291864344 18361 1a00e58565e7f19bf2b3e1bfb82254ae ""
   "FinalReport.aux" 0 -1 0 "pdflatex"
   "refs.bib" 0 -1 0 ""
@@ -7,14 +7,16 @@
   "FinalReport.bbl"
   "FinalReport.blg"
   (rewritten before read)
-["pdflatex"] 1780980209.00984 "c:/Users/Teddy/Documents/Projects/NoisiQ/latex/FinalReport.tex" "FinalReport.pdf" "FinalReport" 1780980211.19228 0
+["pdflatex"] 1780989056.53376 "c:/Users/Teddy/Documents/Projects/NoisiQ/latex/FinalReport.tex" "FinalReport.pdf" "FinalReport" 1780989058.72574 0
   "C:/Users/Teddy/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map" 1779078844 81760 910369822cd2d7c359b2482f4c0de4ca ""
   "C:/Users/Teddy/AppData/Local/MiKTeX/miktex/data/le/pdftex/pdflatex.fmt" 1765086459 13333511 20c6b84b95c31acd6db1e7d82dff76a9 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1233951848 1004 54797486969f23fa377b128694d548df ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1233951848 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msam10.tfm" 1233951854 916 f87d7c45f9c908e672703b83b72241a3 ""
+  "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msam5.tfm" 1233951854 924 9904cf1d39e9767e7a3622f2a125a565 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msam7.tfm" 1233951854 928 2dc8d444221b7a635bb58038579b861a ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msbm10.tfm" 1233951854 908 2921f8a10601f252058503cc6570e581 ""
+  "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msbm5.tfm" 1233951854 940 75ac932a52f80982a9f8ea75d03a34cf ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/amsfonts/symbols/msbm7.tfm" 1233951854 940 228d6584342e91276bf566bcf9716b83 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/cm/cmbx10.tfm" 1136765053 1328 c834bbb027764024c09d3d2bf908b5f0 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/cm/cmbx12.tfm" 1136765053 1324 c910af8c371558dc20f2d7822f66fe64 ""
@@ -33,10 +35,13 @@
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/tfm/public/cm/cmtt10.tfm" 1136765053 768 1321e9409b4137d6fb428ac9dc956269 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmbx10.pfb" 1247596666 34811 78b52f49e893bcba91bd7581cdc144c0 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmbx12.pfb" 1247596666 32080 340ef9bf63678554ee606688e7b5339d ""
+  "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb" 1247596667 36299 5f9df58c2139e7edcf37c8fca4bd384d ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb" 1247596667 35752 024fb6c41858982481f6968b5fc26508 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr12.pfb" 1247596667 32722 d7379af29a190c3f453aba36302ff5a9 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr17.pfb" 1247596666 32362 bc3f3eec7ab7d65fe700963d4017d32c ""
+  "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr7.pfb" 1247596667 32762 7fee39e011c23b3589931effd97b9702 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr9.pfb" 1247596666 33993 9b89b85fd2d9df0482bd47194d1d3bf3 ""
+  "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb" 1247596667 32569 5e5ddc8df908dea60932f3c484a54c0d ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmtt10.pfb" 1247596667 31099 342ef5a582aacbd3346f3cf4579679fa ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/tex/context/base/mkii/supp-pdf.mkii" 1580390158 71627 94eb9990bed73c364d7f53f960cc8c5b ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/tex/generic/bigintcalc/bigintcalc.sty" 1576433602 40635 c40361e206be584d448876bba8a64a3b ""
@@ -169,11 +174,11 @@
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/tex/latex/translations/translations.sty" 1644048522 44247 2188b95d0ee74e31eca4d316263c58a7 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/tex/latex/url/url.sty" 1388490452 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
   "C:/Users/Teddy/AppData/Local/Programs/MiKTeX/tex/latex/xcolor/xcolor.sty" 1729265222 55384 b454dec21c2d9f45ec0b793f0995b992 ""
-  "FinalReport.aux" 1780980210 5316 561729e4b0e8a221a14670a90a2a3928 "pdflatex"
+  "FinalReport.aux" 1780989057 6687 303dcaf0eeadf94286f73a7adac5a8f0 "pdflatex"
   "FinalReport.bbl" 0 -1 0 "bibtex FinalReport"
-  "FinalReport.out" 1780980210 3223 c662a32fa73253b010d9e030f9c6462c "pdflatex"
-  "FinalReport.tex" 1780980205 8533 f29d66528ebe3894f783b5368855bb1a ""
-  "c:/Users/Teddy/Documents/Projects/NoisiQ/latex/FinalReport.tex" 1780980205 8533 f29d66528ebe3894f783b5368855bb1a ""
+  "FinalReport.out" 1780989057 4354 b199e2aeeb0193d7ed6c878ba12c3830 "pdflatex"
+  "FinalReport.tex" 1780989055 14509 2c46541c1a8c044be3a05ea850fccefc ""
+  "c:/Users/Teddy/Documents/Projects/NoisiQ/latex/FinalReport.tex" 1780989055 14509 2c46541c1a8c044be3a05ea850fccefc ""
   (generated)
   "FinalReport.aux"
   "FinalReport.log"
