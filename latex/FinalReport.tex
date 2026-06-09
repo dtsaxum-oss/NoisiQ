@@ -174,11 +174,79 @@ ensuring that the initialization and readout fidelities match published hardware
     Pauli-twirling "backend" for T1 / T2 / Coherent 
 \end{comment}
 
-\section{Metrics (TEDDY)}
-\label{subsec:metrics}
+\section{Metrics}
+\label{sec:metrics}
+\paragraph{}
+    To provide a comprehensive understanding of circuit performance under various noise models, NoisiQ implements a suite of mathematical diagnostics along with the visual tools. 
+These metrics allow users to quantify the degradation of quantum information, from state comparisons to hardware benchmarks.
+
+\subsection{Fidelity Calculations}
+\label{subsec:fidelity}
+\paragraph{}
+    The primary measure of success for a quantum circuit is fidelity, which quantifies how close the noisy output is to the ideal target state. 
+Because NoisiQ employs a dynamic routing architecture, fidelity is calculated differently depending on the simulation backend. 
+For exact density matrix simulations (Qiskit Aer), the library computes the standard state fidelity by comparing the ideal output state with the noisy density matrix $\rho$. 
+Assuming the ideal output is a pure state $\ket{\psi}$, this simplifies to:
+\begin{equation}
+    F = \bra{\psi} \rho \ket{\psi}
+\end{equation}
+    In cases where the target is a mixed state $\sigma$, NoisiQ evaluates the generalized mixed-state fidelity:
+\begin{equation}
+    F(\rho, \sigma) = \left( \Tr \sqrt{\sqrt{\rho} \sigma \sqrt{\rho}} \right)^2
+\end{equation}
+    When working with large Clifford circuits via the \texttt{StimTableauBackend}, constructing the full state vector isn't computationally feasible. 
+While the stabilizer formalism (and Stim) allow for exact wave function overlap calculations between pure tableaus, 
+NoisiQ instead optimizes multi-shot noisy simulations by tracking Pauli error frames via a Monte Carlo approach. 
+The library determines the fraction of simulation shots where the net propagated Pauli error belongs to the target state's stabilizer group. 
+Because applying a stabilizer group element leaves the target state unchanged, 
+this serves as a mathematically rigorous and highly scalable proxy for state fidelity. 
+
+\subsection{State Purity}
+\label{subsec:purity}
+\paragraph{}
+    Purity quantifies how much quantum information has been lost to the environment through decoherence. 
+NoisiQ calculates global purity by taking the trace of the density matrix squared:
+\begin{equation}
+    \gamma = \Tr(\rho^2)
+\end{equation}
+    This value ranges from $1$ for a perfectly pure state down to $1/2^n$ for a completely mixed $n$-qubit state. 
+
+    The library also tracks the purity of individual qubits, where a value of $0.5$ represents a maximally mixed state. 
+However, this metric requires context depending on the circuit's structure. 
+In highly entangled systems, such as a Greenberger-Horne-Zeilinger (GHZ) state, tracing out each qubit of the system will intentionally result in purities of around $0.5$ for each qubit. 
+Therefore, individual qubit purity is most informative in circuits that uncompute back to a separable initial state, 
+allowing users to isolate which physical qubits suffered the most decoherence during execution.
+
+\subsection{Zero-Error Survival}
+\label{subsec:zero_error}
+\paragraph{}
+    NoisiQ also provides operational benchmarks that reflect the practical realities of cloud-based quantum computing. 
+One such metric is the zero-error survival rate, defined as the fraction of total shots that execute without a single error occurring. 
+
+\begin{equation}
+    P_0 = \frac{N_{\text{no errors}}}{N_{\text{total}}}
+\end{equation}
+
+    This metric is relevant because most hardware platforms rely on post-selection and error mitigation techniques that discard runs where errors are detected. 
+If an algorithm exhibits a low zero-error survival rate, the overhead required to successfully execute and post-select the results will scale dramatically. 
+By tracking this metric, NoisiQ allows users to estimate the resource overhead and cloud budget efficiency of their algorithms before deploying them to the hardware platforms.
+
+\subsection{Process and Average Circuit Fidelity}
+\label{subsec:Average_fidelity}
+\paragraph{}
+    For scalable simulations utilizing the \texttt{StimTableauBackend}, we use a different fidelity metric for circuits meant to take arbitrary states as inputs. 
+Unlike state fidelity, which forgives errors that act trivially on a specific target state (such as a $Z$ error on a $\ket{0}$ state), 
+NoisiQ tracks the process fidelity, which strictly requires the net error channel to be the Identity operator.
+
+    Using this process fidelity ($F_{\text{pro}}$), we derive the average circuit fidelity over all possible input states. For an $n$-qubit system with dimension $d = 2^n$, 
+this is calculated using the standard dimension formula:
+    \begin{equation}
+        F_{\text{avg}} = \frac{d \cdot F_{\text{pro}} + 1}{d + 1}
+    \end{equation}
+    This metric is useful for characterizing the overall quality of a noisy Clifford circuit independent of the data qubits being processed.
 
 \section{NoisiQ Examples (DAVID)} %picked these examples, DD obvious, MEK for pauli+clifford+MCM, GHZ for paper reporting and "benchmarking" against, QFT for non-pauli gate abilities
-\label{subsec:metrics}
+\label{sec:examples}
 
 \subsection{Meier-Eastin-Knill (MEK) State Distillation}
 \label{subsec:mek}
