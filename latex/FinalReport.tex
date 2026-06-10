@@ -953,6 +953,29 @@ needed: the heatmap is rendered directly from the true QFT.
     \label{fig:qft_heatmap}
 \end{figure*}
 
+\section{Conclusion}
+\label{sec:conclusion}
+\paragraph{}
+    In this report, we introduced \textbf{NoisiQ}, 
+an open-source Python library designed to bridge the gap between abstract quantum algorithms and the physical realities of hardware noise in the NISQ era. 
+While existing production-grade simulators are highly optimized for computational throughput, 
+they often lack the intuitive, visual feedback necessary for students and early-career researchers to fully grasp how errors propagate through a circuit. 
+NoisiQ addresses this educational and practical gap by providing a unified framework for noise-aware simulation and comprehensive visual diagnostics.
+
+    At its core, NoisiQ employs a dynamic routing architecture that automatically selects the most efficient simulation backend by leveraging Stim for highly scalable Clifford and Pauli-twirled circuits, and Qiskit Aer or 
+a custom trajectory backend for exact density-matrix simulation of universal circuits. 
+This flexibility allows users to seamlessly scale from small, exact physical models to large-scale quantum error correction demonstrations. 
+By integrating pre-loaded hardware profiles, NoisiQ enables straightforward cross-platform benchmarking, 
+allowing users to compare the effects of $T_1$ relaxation, $T_2$ dephasing, coherent over-rotations, and SPAM errors across leading quantum architectures like IBM superconducting processors and trapped-ion systems from Quantinuum and IonQ.
+
+    Furthermore, NoisiQ's suite of visualization tools, including step-by-step error trajectory animations, aggregate error heatmaps, and an interactive diagnostic interface, 
+transforms abstract noise parameters into observable, circuit-level consequences. 
+Coupled with built-in metrics and noise suppression techniques like dynamical decoupling, NoisiQ empowers users to rapidly prototype, test, and visualize error mitigation strategies. 
+
+    Ultimately, NoisiQ serves as both a powerful research sandbox and an accessible educational instrument. 
+By making the connection between physical noise models and algorithmic performance transparent, NoisiQ helps cultivate a deeper physical intuition for quantum computing, 
+paving the way for more robust algorithm design in the presence of hardware noise.
+
 \section*{Future Work}
 \label{sec:future_work}
 \paragraph{}
@@ -1260,12 +1283,6 @@ circuit depth and entangling-gate count.
     }
     \label{fig:qpe_heatmap}
 \end{figure*}
-
-\paragraph{Hardware Noise Comparison}
-\label{paragraph:hardware_comp}
-\begin{comment}
-    T1 / T2 across different hardware platforms and the effect DD on them 
-\end{comment}
 
 \subsection*{Code Listings}
 \label{subsec:code_listings}
