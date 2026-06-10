@@ -60,6 +60,11 @@ M.~Van~den Nest, ``Classical simulation of quantum computation, the
   {Gottesman-Knill} theorem, and slightly beyond,'' {\em arXiv preprint
   arXiv:0811.0898}, 2008.
 
+\bibitem{geller2013}
+M.~R. Geller and Z.~Zhou, ``Efficient error models for fault-tolerant
+  architectures and the pauli twirling approximation,'' {\em Physical Review
+  A}, vol.~88, no.~1, p.~012314, 2013.
+
 \bibitem{wallman2016}
 J.~J. Wallman and J.~Emerson, ``Noise tailoring for scalable quantum
   computation via randomized compiling,'' {\em Physical Review A}, vol.~94,

@@ -99,13 +99,13 @@ It analyzes the gate set (e.g., Clifford vs. non-Clifford) and the noise channel
 
 \paragraph{}
 \label{paragraph:stim}
-    For circuits composed entirely of Clifford gates (e.g., $H$, $S$, CNOT) and Pauli noise, NoisiQ routes execution to the \texttt{StimTableauBackend}. 
+    For circuits composed entirely of Clifford gates (e.g., $H$, $S$, CNOT) and Pauli noise, NoisiQ routes execution to the \texttt{StimTableauBackend}\cite{stim2021}. 
 Stim is a stabilizer code simulator that tracks the evolution of Pauli frames rather than full state vectors.
 By leveraging the Gottesman-Knill theorem \cite{vandennest2008}, Stim scales polynomially with number of qubits rather than exponetially, giving it the ability to simulate thousands of qubits and millions of gates in milliseconds. 
 This backend is heavily utilized in NoisiQ for large-scale Quantum Error Correction (QEC) demonstrations and multi-shot error tracking where non-Clifford gates are not required.
 
     When a circuit contains non-Clifford operations (like $T$ gates or arbitrary rotations) or complex non-Pauli noise models (like coherent over-rotations or amplitude damping), the stabilizer formalism breaks down. 
-In these cases, NoisiQ automatically hands off execution to the \texttt{TrajectoryBackend} or the \texttt{QiskitAerBackend}. 
+In these cases, NoisiQ automatically hands off execution to the \texttt{TrajectoryBackend} or the \texttt{QiskitAerBackend}\cite{qiskit2024}. 
 
     The \texttt{TrajectoryBackend} handles non-Pauli noise by simulating the noise channels as discrete Kraus operators or unitaries, applying them shot-by-shot to a statevector. 
 For exact density matrix simulation of universal circuits, NoisiQ integrates directly with Qiskit Aer. 
@@ -126,7 +126,7 @@ In NoisiQ, users can inject custom noise into their circuits using the \texttt{P
     Because Pauli errors map perfectly to the stabilizer formalism, they are fully compatible with NoisiQ's \texttt{StimTableauBackend}, allowing for the simulation of massive circuits in polynomial time. 
 To take advantage of this scalability when modeling non-Pauli hardware noise (like $T_1$, $T_2$, or coherent over-rotations), 
 NoisiQ includes a \texttt{representation="pauli\_twirl"} mode in its hardware profiles. 
-This feature automatically approximates continuous, non-Pauli physical errors into their first-order stochastic Pauli equivalents. 
+This feature automatically approximates continuous, non-Pauli physical errors into their first-order stochastic Pauli equivalents \cite{geller2013}. 
 For example, a coherent rotation of angle $\epsilon$ around the $Z$-axis is "twirled" into a discrete $Z$ error occurring with probability $\sin^2(\epsilon)$. 
 This bridging mechanism gives users the flexibility to choose between exact physical simulation on small circuits or fast, large-scale approximations on deep circuits.
 
@@ -345,7 +345,7 @@ NoisiQ's development was made possible by leveraging established frameworks, par
         \item \textbf{SPAM Error:} $3.5 \times 10^{-3}$
     \end{itemize}
 
-\subsection{IBM Eagle r3}
+\subsection{IBM Eagle r3 \cite{abughanem2024}}
 \label{subsec:profile_eagle}
     The Eagle processor features a 127-qubit heavy-hexagonal lattice using fixed-frequency transmon qubits and fixed couplers, resulting in higher residual $ZZ$ coupling compared to Heron.
     \begin{itemize}
