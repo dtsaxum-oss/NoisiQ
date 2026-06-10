@@ -5,9 +5,20 @@ Reallocating 'name_of_file' (item size: 1) to 7 items.
 The style file: ieeetr.bst
 Reallocating 'name_of_file' (item size: 1) to 5 items.
 Database file #1: refs.bib
+Warning--I didn't find a database entry for "preskill2018nisq"
+Warning--I didn't find a database entry for "krantz2019superconducting"
+Warning--I didn't find a database entry for "kjaergaard2020superconducting"
+Warning--I didn't find a database entry for "arute2019quantum"
+Warning--I didn't find a database entry for "ibm2023condor"
+Warning--I didn't find a database entry for "cai2019constructing"
+Warning--I didn't find a database entry for "hashim2021randomized"
+Warning--I didn't find a database entry for "qiskit2024aer"
+Warning--I didn't find a database entry for "gidney2021stim"
+Warning--I didn't find a database entry for "viola1999dynamical"
+Warning--I didn't find a database entry for "nielsen2010quantum"
 You've used 19 entries,
             1876 wiz_defined-function locations,
-            581 strings with 6509 characters,
+            592 strings with 6710 characters,
 and the built_in function-call counts, 3945 in all, are:
 = -- 378
 > -- 170
@@ -46,3 +57,4 @@ warning$ -- 0
 while$ -- 30
 width$ -- 21
 write$ -- 187
+(There were 11 warnings)
