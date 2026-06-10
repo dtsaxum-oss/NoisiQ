@@ -5,9 +5,9 @@
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{physics}
 \usepackage{siunitx}
 \usepackage{hyperref}
-\usepackage{physics}
 \usepackage{booktabs}
 \usepackage{float}
 \usepackage{tikz}
@@ -24,7 +24,7 @@
 \twocolumn[
 \maketitle
 \begin{abstract}
-In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is constrained by overall error rates and the specific physical characteristics of the underlying noise. NoisiQ is an open-source Python library designed to bridge the gap between quantum circuit simulators and hardware behavior through noise-aware simulation and visualization. The package dynamically routes between scalable Clifford/Pauli propagation using the stabilizer formalism and exact density-matrix simulation to model a broad suite of errors, including Pauli noise, T1 relaxation, T2 dephasing, coherent over-rotations, and correlated multi-qubit errors. NoisiQ translates these noise parameters into visual diagnostics, such as interactive heatmaps, step-by-step error propagation animations, and multi-shot error summaries, allowing users to track how errors accumulate across gates, qubits, measurements, and circuit depth. The library also provides built-in noise suppression techniques, including dynamical decoupling, while integrating with established frameworks such as Qiskit and Stim. Designed initially as an educational and exploratory research tool, NoisiQ helps early researchers connect physical noise models, circuit-level behavior, and representative performance metrics in a single workflow to easily visualize and build intuition for quantum algorithms.
+In the Noisy Intermediate-Scale Quantum (NISQ) era \cite{preskill2018}, circuit performance is constrained by overall error rates and the specific physical characteristics of the underlying noise. NoisiQ is an open-source Python library designed to bridge the gap between quantum circuit simulators and hardware behavior through noise-aware simulation and visualization. The package dynamically routes between scalable Clifford/Pauli propagation using the stabilizer formalism and exact density-matrix simulation to model a broad suite of errors, including Pauli noise, T1 relaxation, T2 dephasing, coherent over-rotations, and correlated multi-qubit errors. NoisiQ translates these noise parameters into visual diagnostics, such as interactive heatmaps, step-by-step error propagation animations, and multi-shot error summaries, allowing users to track how errors accumulate across gates, qubits, measurements, and circuit depth. The library also provides built-in noise suppression techniques, including dynamical decoupling \cite{tripathi2022}, while integrating with established frameworks such as Qiskit \cite{qiskit2024} and Stim \cite{stim2021}. Designed initially as an educational and exploratory research tool, NoisiQ helps early researchers connect physical noise models, circuit-level behavior, and representative performance metrics in a single workflow to easily visualize and build intuition for quantum algorithms.
 \end{abstract}
 \vspace{0.1in} 
 ]
@@ -32,35 +32,131 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
 \section{Introduction and Motivation (DAVID)}
 \label{sec:intro}
 
-\section{Design Philosophy (TEDDY)}
+\section{Design Philosophy}
 \label{sec:philosophy}
+\subsection{Design Principles}
+\label{subsec:principles}
+\paragraph{}
+    Inspired by the design principles of frameworks like Qiskit, NoisiQ is built upon a foundation of modularity, extensibility, and user-centric design. 
+The primary goal is to bridge the gap between quantum algorithms and the physical realities of hardware noise. 
+To achieve this, NoisiQ's architecture seeks to abstract the algorithms and circuit building to focus on visualization tools that help the user build intuition, creating an environment meant to be tinkered with for research and education.
 
-\subsection{Modularity and Expansion (TEDDY)}
-\label{subsec:modularity}
+A core idea of NoisiQ's design is decoupling the Intermediate Representation (IR) from the execution backends and noise models. 
+The built-in method for defining circuits is with the \texttt{Circuit} and \texttt{Operation} classes, which simply record the sequence of gates, measurements, and target qubits, which should feel familiar to users of Qiskit or Stim. 
+This separation enables a dynamic routing system via the \texttt{BackendSelector}, 
+which automatically analyzes the circuit's gate set and applied noise models to select the most efficient simulation engine. 
+
+Furthermore, this modularity ensures that NoisiQ is extensible to future quantum hardware. 
+As quantum research evolves, users can easily introduce new, complex noise channels (such as correlated multi-qubit errors or hardware-specific cross-talk) 
+or plug in entirely new simulation backends without needing to alter the core circuit logic or the visualization pipeline.
 
 \subsection{Teaching Tool}
 \label{subsec:teaching}
+\paragraph{}
+    Quantum error correction and noise propagation are notoriously difficult concepts to grasp through mathematics alone. 
+NoisiQ was fundamentally designed to be a visual aid in the learning process, serving as an intuitive educational tool for students and early researchers entering the field. 
+Through interactive, step-by-step animations, users can watch in real-time as errors are injected and propagate through gates and measurements. 
+This allows learners to go from understanding how a single Pauli error propagatesthrough a circuit to the macro-level with multi-shot heatmaps to visualize aggregate error rates. 
+By providing this interactive visual feedback loop, NoisiQ acts as a sandbox that helps users build a physical intuition for how and why quantum algorithms fail in the NISQ era.
 
 \subsection{Straightforward Import / Export}
+\label{subsec:importexport}
+\paragraph{}
+    For a new tool to be widely adopted, it must integrate seamlessly with the tools researchers already use. 
+NoisiQ was built to complement the existing quantum software stack rather than replace it. 
+To prevent users from having to rewrite their existing algorithms, we built NoisiQ with robust import capabilities, allowing it to parse OpenQASM 2.0 \cite{openqasm2017} and directly import circuits from established frameworks like Qiskit \cite{qiskit2024} and Stim \cite{stim2021}. 
 
-\begin{comment}
-    Def change the name of this - but want to discuss motivation of helping people getting into field learning about QEC etc. Is this even needed?
-\end{comment}
+    Equally important is the ability to share the output of the library. 
+Because research and education rely heavily on communication, NoisiQ was designed to export its visualizations into universally accessible formats. 
+Users can easily export their circuit animations and heatmaps as MP4 videos, GIFs, and image files. 
+This ensures that the visual intuition generated by NoisiQ can be effortlessly embedded into research papers, presentations, and educational websites, extending its utility far beyond the Python environment.
 
-\section{Simulation Architecture (BACKEND-TEDDY)}
+\subsection{Hardware Comparison}
+\label{subsec:hardware_comparison}
+\paragraph{}
+    Because different quantum architectures exhibit fundamentally different noise characteristics and connectivity constraints 
+(i.e. superconducting qubits with fast gates but short coherence times versus trapped ions with long coherence but slower gates), 
+an algorithm optimized for one platform may perform poorly on another. 
+NoisiQ was designed to make cross-platform hardware comparison as effortless as possible. 
+By decoupling the circuit definition from the physical noise models, NoisiQ allows users to write an algorithm once and simulate it across a variety of pre-loaded hardware profiles, including IBM's Heron processors \cite{ibm_platform, abughanem2024}, Quantinuum's H2 systems \cite{quantinuum_h2_emergentmind, quantinuum_h2_docs}, and IonQ's Forte \cite{ionq_forte, ionq_forte_first}. 
+
+    Rather than manually configuring complex noise channels, users can simply select a target device, 
+and NoisiQ automatically applies the appropriate $T_1$ and $T_2$ times, gate infidelities, SPAM errors, and architecture-specific phenomena like $ZZ$ crosstalk or spectator errors. 
+When combined with the library's visual diagnostics, this allows users to see exactly how and why an algorithm fails on different devices. 
+For example, users can make an interactive heatmap to compare the impact of coherent over-rotations on a trapped-ion system versus the rapid decoherence of a superconducting processor. 
+This capability empowers students and researchers to perform direct comparative benchmarking, build intuition for hardware-specific failure modes, and identify the most suitable hardware modality for their quantum applications.
+
+\section{Simulation Architecture}
 \label{subsec:architecture}
+\paragraph{}
+    The core simulation architecture of NoisiQ is built around a dynamic routing system that selects the most efficient backend for a given circuit and noise model. 
+Because quantum simulation is computationally expensive, simulating every circuit with full density matrices is unfeasible for deep algorithms or large qubit counts. 
+To solve this, NoisiQ implements a \texttt{BackendSelector} that inspects the Intermediate Representation (IR) before execution. 
+It analyzes the gate set (e.g., Clifford vs. non-Clifford) and the noise channels (e.g., Pauli vs. non-Pauli) to hand off the simulation to the optimal engine.
 
 \subsection{Simulator Handoffs}
 \label{subsec:simulator}
 
-\paragraph{STIM}
+\paragraph{}
 \label{paragraph:stim}
+    For circuits composed entirely of Clifford gates (e.g., $H$, $S$, CNOT) and Pauli noise, NoisiQ routes execution to the \texttt{StimTableauBackend}. 
+Stim is a stabilizer code simulator that tracks the evolution of Pauli frames rather than full state vectors.
+By leveraging the Gottesman-Knill theorem \cite{vandennest2008}, Stim scales polynomially with number of qubits rather than exponetially, giving it the ability to simulate thousands of qubits and millions of gates in milliseconds. 
+This backend is heavily utilized in NoisiQ for large-scale Quantum Error Correction (QEC) demonstrations and multi-shot error tracking where non-Clifford gates are not required.
 
-\paragraph{Qiskit}
-\label{paragraph:qiskit}
+    When a circuit contains non-Clifford operations (like $T$ gates or arbitrary rotations) or complex non-Pauli noise models (like coherent over-rotations or amplitude damping), the stabilizer formalism breaks down. 
+In these cases, NoisiQ automatically hands off execution to the \texttt{TrajectoryBackend} or the \texttt{QiskitAerBackend}. 
+
+    The \texttt{TrajectoryBackend} handles non-Pauli noise by simulating the noise channels as discrete Kraus operators or unitaries, applying them shot-by-shot to a statevector. 
+For exact density matrix simulation of universal circuits, NoisiQ integrates directly with Qiskit Aer. 
+By compiling the NoisiQ IR down to a \texttt{QuantumCircuit} and converting our custom Kraus channels into Qiskit \texttt{quantum\_error} objects, we leverage Qiskit Aer's highly optimized density matrix simulator. 
+This handoff allows NoisiQ to maintain exact physical accuracy for complex noise models on smaller qubit counts (typically $\leq 13$ qubits) while seamlessly scaling up via Stim when the gate set and error model allow it.
 
 \subsection{Noise Types}
 \label{subsec:noise_types}
+\paragraph{}
+    A major goal of NoisiQ is to accurately reflect the physical noise profiles of quantum hardware.  
+The library includes pre-loaded hardware profiles (e.g., IBM Heron, Quantinuum H2) that automatically map device specifications to the following noise channels:
+
+\subsubsection{Pauli Errors and Pauli-Twirling}
+\paragraph{}
+    At the core of scalable quantum error simulation (with Stim) is the Pauli error channel, which models stochastic bit-flip ($X$), phase-flip ($Z$), and combined ($Y$) errors. 
+In NoisiQ, users can inject custom noise into their circuits using the \texttt{PauliError} class, or use convenience functions like \texttt{depolarizing\_error} and \texttt{dephasing\_error} to apply standard noise models to specific gates. 
+
+    Because Pauli errors map perfectly to the stabilizer formalism, they are fully compatible with NoisiQ's \texttt{StimTableauBackend}, allowing for the simulation of massive circuits in polynomial time. 
+To take advantage of this scalability when modeling non-Pauli hardware noise (like $T_1$, $T_2$, or coherent over-rotations), 
+NoisiQ includes a \texttt{representation="pauli\_twirl"} mode in its hardware profiles. 
+This feature automatically approximates continuous, non-Pauli physical errors into their first-order stochastic Pauli equivalents. 
+For example, a coherent rotation of angle $\epsilon$ around the $Z$-axis is "twirled" into a discrete $Z$ error occurring with probability $\sin^2(\epsilon)$. 
+This bridging mechanism gives users the flexibility to choose between exact physical simulation on small circuits or fast, large-scale approximations on deep circuits.
+
+\subsubsection{Amplitude Damping ($T_1$)}
+\paragraph{}
+Amplitude damping is the energy relaxation where a qubit in the $|1\rangle$ state spontaneously decays to $|0\rangle$. 
+This is implemented via a \texttt{KrausChannel} parameterized by the hardware's $T_1$ time and the duration of the gate or idle period.
+
+\subsubsection{Phase Damping ($T_2$)}
+\paragraph{}
+Phase damping models the loss of transverse coherence (dephasing) without energy loss. 
+It is parameterized by $T_2$ and the gate time, gradually shrinking the off-diagonal elements of the density matrix.
+
+\subsubsection{Coherent Over-rotation}
+\paragraph{}
+Unlike stochastic errors that destroy purity, coherent errors are small, systematic unitary rotations (e.g., $U_{\text{err}} = \exp(-i \epsilon Z)$) caused by miscalibrated control pulses. 
+Because these errors accumulate coherently (amplitudes add linearly, probabilities scale quadratically), they are highly detrimental in deep circuits. 
+NoisiQ models this exactly via the \texttt{CoherentRotation} channel, forcing a handoff to the \texttt{TrajectoryBackend} to capture the quadratic accumulation that standard Pauli-twirling \cite{wallman2016, emerson2007} misses.
+
+\subsubsection{Crosstalk and Correlated Errors}
+\paragraph{}
+On real hardware, errors are rarely independent. NoisiQ implements \texttt{CorrelatedPauliError} channels to model joint failure modes. 
+For example, always-on residual coupling in superconducting qubits causes joint $ZZ$ phase errors during idle times, and addressing beam spillover in trapped ions causes spectator errors on neighboring qubits during two-qubit gates.
+
+\subsubsection{SPAM Errors}
+\paragraph{}
+State Preparation and Measurement (SPAM) errors are modeled by injecting depolarizing noise at the boundaries of the circuit, 
+with state preparation errors applied before the first gate and measurement errors applied after the final gate,
+ensuring that the initialization and readout fidelities match published hardware benchmarks.
+
 
 \section{Front End Features (DAVID)}
 \label{subsec:frontend}
@@ -78,11 +174,79 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
     Pauli-twirling "backend" for T1 / T2 / Coherent 
 \end{comment}
 
-\section{Metrics (TEDDY)}
-\label{subsec:metrics}
+\section{Metrics}
+\label{sec:metrics}
+\paragraph{}
+    To provide a comprehensive understanding of circuit performance under various noise models, NoisiQ implements a suite of mathematical diagnostics along with the visual tools. 
+These metrics allow users to quantify the degradation of quantum information, from state comparisons to hardware benchmarks.
+
+\subsection{Fidelity Calculations}
+\label{subsec:fidelity}
+\paragraph{}
+    The primary measure of success for a quantum circuit is fidelity, which quantifies how close the noisy output is to the ideal target state \cite{nielsenchuang2000}. 
+Because NoisiQ employs a dynamic routing architecture, fidelity is calculated differently depending on the simulation backend. 
+For exact density matrix simulations (Qiskit Aer), the library computes the standard state fidelity by comparing the ideal output state with the noisy density matrix $\rho$. 
+Assuming the ideal output is a pure state $\ket{\psi}$, this simplifies to:
+\begin{equation}
+    F = \bra{\psi} \rho \ket{\psi}
+\end{equation}
+    In cases where the target is a mixed state $\sigma$, NoisiQ evaluates the generalized mixed-state fidelity:
+\begin{equation}
+    F(\rho, \sigma) = \left( \Tr \sqrt{\sqrt{\rho} \sigma \sqrt{\rho}} \right)^2
+\end{equation}
+    When working with large Clifford circuits via the \texttt{StimTableauBackend}, constructing the full state vector isn't computationally feasible. 
+While the stabilizer formalism (and Stim) allow for exact wave function overlap calculations between pure tableaus, 
+NoisiQ instead optimizes multi-shot noisy simulations by tracking Pauli error frames via a Monte Carlo approach. 
+The library determines the fraction of simulation shots where the net propagated Pauli error belongs to the target state's stabilizer group. 
+Because applying a stabilizer group element leaves the target state unchanged, 
+this serves as a mathematically rigorous and highly scalable proxy for state fidelity. 
+
+\subsection{State Purity}
+\label{subsec:purity}
+\paragraph{}
+    Purity quantifies how much quantum information has been lost to the environment through decoherence. 
+NoisiQ calculates global purity by taking the trace of the density matrix squared:
+\begin{equation}
+    \gamma = \Tr(\rho^2)
+\end{equation}
+    This value ranges from $1$ for a perfectly pure state down to $1/2^n$ for a completely mixed $n$-qubit state. 
+
+    The library also tracks the purity of individual qubits, where a value of $0.5$ represents a maximally mixed state. 
+However, this metric requires context depending on the circuit's structure. 
+In highly entangled systems, such as a Greenberger-Horne-Zeilinger (GHZ) state, tracing out each qubit of the system will intentionally result in purities of around $0.5$ for each qubit. 
+Therefore, individual qubit purity is most informative in circuits that uncompute back to a separable initial state, 
+allowing users to isolate which physical qubits suffered the most decoherence during execution.
+
+\subsection{Zero-Error Survival}
+\label{subsec:zero_error}
+\paragraph{}
+    NoisiQ also provides operational benchmarks that reflect the practical realities of cloud-based quantum computing. 
+One such metric is the zero-error survival rate, defined as the fraction of total shots that execute without a single error occurring. 
+
+\begin{equation}
+    P_0 = \frac{N_{\text{no errors}}}{N_{\text{total}}}
+\end{equation}
+
+    This metric is relevant because most hardware platforms rely on post-selection and error mitigation techniques that discard runs where errors are detected. 
+If an algorithm exhibits a low zero-error survival rate, the overhead required to successfully execute and post-select the results will scale dramatically. 
+By tracking this metric, NoisiQ allows users to estimate the resource overhead and cloud budget efficiency of their algorithms before deploying them to the hardware platforms.
+
+\subsection{Process and Average Circuit Fidelity}
+\label{subsec:Average_fidelity}
+\paragraph{}
+    For scalable simulations utilizing the \texttt{StimTableauBackend}, we use a different fidelity metric for circuits meant to take arbitrary states as inputs. 
+Unlike state fidelity, which forgives errors that act trivially on a specific target state (such as a $Z$ error on a $\ket{0}$ state), 
+NoisiQ tracks the process fidelity, which strictly requires the net error channel to be the Identity operator.
+
+    Using this process fidelity ($F_{\text{pro}}$), we derive the average circuit fidelity over all possible input states. For an $n$-qubit system with dimension $d = 2^n$, 
+this is calculated using the standard dimension formula \cite{nielsen2002}:
+    \begin{equation}
+        F_{\text{avg}} = \frac{d \cdot F_{\text{pro}} + 1}{d + 1}
+    \end{equation}
+    This metric is useful for characterizing the overall quality of a noisy Clifford circuit independent of the data qubits being processed.
 
 \section{NoisiQ Examples (DAVID)} %picked these examples, DD obvious, MEK for pauli+clifford+MCM, GHZ for paper reporting and "benchmarking" against, QFT for non-pauli gate abilities
-\label{subsec:metrics}
+\label{sec:examples}
 
 \subsection{Meier-Eastin-Knill (MEK) State Distillation}
 \label{subsec:mek}
@@ -113,9 +277,6 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
 \section{Conclusion}
 \label{sec:conclusion}
 
-\bibliographystyle{ieeetr}
-\bibliography{refs}
-
 \begin{comment}
     Reference list to add / find: 
     GHZ paper 
@@ -133,13 +294,96 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era, circuit performance is const
     Papers specific to noise types, i.e. T1 / T2 etc? 
 \end{comment}
 
+\section*{Future Work}
+\label{sec:future_work}
+\paragraph{}
+    While NoisiQ currently provides a foundation for noise-aware simulation and visualization, there are several key areas for future development, primarily aimed at increasing its accessibility and physical accuracy.
 
-\section*{Future Work (TEDDY-FROM POSTER)}
-\label{subsec:future_work}
+    First, we plan to expand the library's hardware integration by introducing more complex physical noise models. 
+Real quantum hardware is plagued by architecture-specific phenomena, and as we expand NoisiQ to encompass more hardware modalities and profiles, we will incorporate these effects into our simulation framework. 
+Future updates will focus on implementing detailed models for leakage (where qubits escape the computational subspace into higher energy states like $\ket{2}$), non-Markovian noise, and time-dependent crosstalk. 
+By continuously refining these models, NoisiQ will further bridge the gap between simulation and the realities of quantum hardware.
 
-\section*{Acknowledgments (from poster)}
+    Second, to support broader adoption within the quantum research and education communities, we aim to package NoisiQ for standard distribution. 
+Currently, the library must be cloned and run locally. 
+Transitioning the project to a fully packaged Python library installable via \texttt{pip} will streamline the setup process, 
+allowing users to integrate NoisiQ into their existing Jupyter Notebook workflows and research pipelines.
 
+    Finally, we would like to build a fully interactive, web-based GUI for NoisiQ. 
+Inspired by other educational tools like Quirk \cite{quirk}, this web application would allow users to construct quantum circuits using a drag-and-drop interface. 
+As users build their circuits, the backend would dynamically run NoisiQ's simulations and render the heatmaps, density matrices, and error-propagation animations in real-time directly in the browser. 
+This would drastically lower the barrier to entry, providing students and early researchers with a code-free sandbox to build physical intuition for quantum error correction and noise propagation.
+
+\section*{Acknowledgments}
+\label{sec:acknowledgments}
+\paragraph{}
+    We would like to express our gratitude to our advisors, Dr. Mohamad Niknam and Dr. Richard Ross, for their guidance, feedback, and support throughout the development of this project. 
+We thank the UCLA I-Corp program, particularly Professor Farhad Rostamian, for the invaluable experience of teaching us how to pitch ourselves and our work.
+Additionally, we thank the members of the 2026 UCLA Master of Quantum Science and Technology (MQST) cohort for their insightful discussions and testing of early software iterations. 
+Finally, we acknowledge the foundational work of the open-source quantum software community. 
+NoisiQ's development was made possible by leveraging established frameworks, particularly IBM's Qiskit \cite{qiskit2024} and Craig Gidney's Stim \cite{stim2021}.
+
+\bibliographystyle{ieeetr}
+\bibliography{refs}
+
+\clearpage
 \appendix
+
+\section{Hardware Noise Profiles}
+\label{sec:hardware_profiles}
+\paragraph{}
+    To facilitate accurate, cross-platform benchmarking, NoisiQ includes several pre-loaded hardware profiles. These profiles map published device specifications directly into NoisiQ's noise channels, including $T_1$ 
+      relaxation, $T_2$ dephasing, stochastic gate errors, coherent over-rotations, and architecture-specific crosstalk. The parameters for the currently supported devices are detailed below.
+
+\subsection{IBM Heron r3 \cite{ibm_platform, abughanem2024}}
+\label{subsec:profile_heron}
+    The Heron processor features a 156-qubit heavy-hexagonal lattice. Unlike previous generations, it utilizes tunable couplers that significantly suppress $ZZ$ crosstalk.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 269\,\mu\text{s}$, $T_2 = 322\,\mu\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $1.6 \times 10^{-4}$, Two-qubit: $3 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $50\,\text{ns}$, Two-qubit: $200\,\text{ns}$
+        \item \textbf{SPAM Error:} $3.5 \times 10^{-3}$
+    \end{itemize}
+
+\subsection{IBM Eagle r3}
+\label{subsec:profile_eagle}
+    The Eagle processor features a 127-qubit heavy-hexagonal lattice using fixed-frequency transmon qubits and fixed couplers, resulting in higher residual $ZZ$ coupling compared to Heron.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 263\,\mu\text{s}$, $T_2 = 147\,\mu\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $5.49 \times 10^{-4}$, Two-qubit: $1.16 \times 10^{-2}$
+        \item \textbf{Gate Durations:} Single-qubit: $50\,\text{ns}$, Two-qubit: $561\,\text{ns}$
+        \item \textbf{SPAM Error:} $1.35 \times 10^{-2}$
+    \end{itemize}
+
+\subsection{Quantinuum H2-1 \cite{quantinuum_h2_emergentmind, quantinuum_h2_docs}}
+\label{subsec:profile_h2}
+    The H2-1 is a 56-qubit trapped-ion device utilizing a Quantum Charge-Coupled Device (QCCD) architecture. It features all-to-all connectivity achieved by physically shuttling ions between four parallel gate zones.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 100.0\,\text{s}$, $T_2 = 1.0\,\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $3 \times 10^{-5}$, Two-qubit: $1.5 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $5\,\mu\text{s}$, Two-qubit: $150\,\mu\text{s}$
+        \item \textbf{SPAM Error:} $2 \times 10^{-3}$
+    \end{itemize}
+
+\subsection{IonQ Forte \cite{ionq_forte, ionq_forte_first}}
+\label{subsec:profile_forte}
+    The Forte is a 36-qubit trapped-ion system that maintains a single linear chain of ions. It achieves all-to-all connectivity via individual optical addressing rather than physical shuttling.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 50.0\,\text{s}$, $T_2 = 1.0\,\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $2 \times 10^{-4}$, Two-qubit: $4 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $135\,\mu\text{s}$, Two-qubit: $600\,\mu\text{s}$
+        \item \textbf{SPAM Error:} $5 \times 10^{-3}$
+    \end{itemize}
+
+\subsection{IonQ Aria \cite{ionq_aria}}
+\label{subsec:profile_aria}
+    The Aria is an earlier generation 25-qubit (21 production) trapped-ion system, sharing a similar linear chain architecture to the Forte but with slightly higher gate infidelities.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 50.0\,\text{s}$, $T_2 = 1.0\,\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $6 \times 10^{-4}$, Two-qubit: $6 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $135\,\mu\text{s}$, Two-qubit: $600\,\mu\text{s}$
+        \item \textbf{SPAM Error:} $3.9 \times 10^{-3}$
+    \end{itemize}
 
 \section*{Supporting Examples / Code}
 \label{sec:supporting_code}
