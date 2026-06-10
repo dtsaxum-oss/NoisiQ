@@ -87,7 +87,7 @@ and benchmarking quantum algorithms prior to execution on physical hardware.
 However, exact classical simulation of quantum systems is inherently limited
 by the exponential growth of the Hilbert space: an $n$-qubit system requires
 $2^n$ complex amplitudes, rendering statevector simulation tractable only up
-to approximately $\sim$XXX qubits on common hardware.
+to approximately $\sim 14$ qubits on common hardware.
 As counts grow into the tens and
 hundreds of qubits~\cite{arute2019quantum, ibm2023condor}, this exponential scaling
 increasingly separates the classical simulation environment from the hardware. A reality that researchers must navigate, motivating the use of approximate noise models and efficient simulation methods.
@@ -124,7 +124,7 @@ researchers by building physical intuition for how noise propagates through
 quantum circuits and interacts with algorithmic structure, a connection that
 existing tools do not make readily accessible.
 
-section{Design Philosophy}
+\section{Design Philosophy}
 \label{sec:philosophy}
 \subsection{Design Principles}
 \label{subsec:principles}
@@ -1034,7 +1034,7 @@ NoisiQ's development was made possible by leveraging established frameworks, par
 
 \appendix
 
-\section*{Hardware Noise Profiles}
+\section{Hardware Noise Profiles}
 \label{sec:hardware_profiles}
 \paragraph{}
     To facilitate accurate, cross-platform benchmarking, NoisiQ includes several pre-loaded hardware profiles. These profiles map published device specifications directly into NoisiQ's noise channels, including $T_1$ 
