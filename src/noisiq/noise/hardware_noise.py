@@ -575,41 +575,46 @@ def list_hardware() -> list[str]:
 
 # ==============================================================================
 # Pre-loaded profiles
-# Data sourced from ghz_hardware_summary.md (David_wip/) — May 2026
+# If you have more up-to-date parameters for these devices or want to add new ones, please submit a PR! As of June 2026, these are accurate to the best of my knowledge based on 
+# public datasheets, papers, and communications with hardware vendors, but this is a rapidly evolving landscape.
 # ==============================================================================
 
+# Data taken from ibm_boston https://quantum.cloud.ibm.com/computers
 register_hardware(HardwareProfile(
-    name="ibm_heron_r2",
+    name="ibm_heron_r3",
     vendor="IBM",
-    system="Heron r2",
-    t1=300e-6,
-    t2=200e-6,
-    single_qubit_error=3e-5,
+    system="Heron r3",
+    t1=269e-6,
+    t2=322e-6,
+    single_qubit_error=1.6e-4, 
     two_qubit_error=0.003,
-    spam_error=0.015,
+    spam_error=0.0035,
     gate_times=GateTimes(single_qubit_ns=50.0, two_qubit_ns=200.0),
     notes=(
         "156-qubit heavy-hexagonal lattice. Tunable couplers virtually eliminate "
         "ZZ crosstalk. TLS mitigation in hardware. 3-5x improvement over Eagle."
     ),
     ghz_results=[],
+    # No published results for the following parameters, but we think these are reasonable estimates based on the architecture and IBM's public statements:
     idle_zz_rate_hz=5_000.0,          # < 5 kHz; tunable couplers suppress ZZ
     coherent_fraction=0.3,             # tunable-coupler default; lower coherent fraction
     spectator_error_per_2q_gate=1e-4,  # small spectator spillover; EPLG ≈ isolated 2q
     mcmr_crosstalk=0.0,
 ))
 
+#data taken from mean values for ibm_kyiv (2024) from https://arxiv.org/pdf/2410.00916
 register_hardware(HardwareProfile(
     name="ibm_eagle_r3",
     vendor="IBM",
     system="Eagle r3",
-    t1=262e-6,
-    t2=177e-6,
-    single_qubit_error=2.4e-4,
-    two_qubit_error=0.0074,
+    t1=263e-6,
+    t2=147e-6,
+    single_qubit_error=5.49e-4,
+    two_qubit_error=1.16e-2, # median, given in header of data sheet
     spam_error=0.0135,
-    gate_times=GateTimes(single_qubit_ns=60.0, two_qubit_ns=533.0),
+    gate_times=GateTimes(single_qubit_ns=50.0, two_qubit_ns=561.0), #single not given but assumed from literature, 2q given in header of data sheet
     notes="127-qubit heavy-hexagonal lattice. ECR two-qubit gate.",
+    # Again, no published results for the following parameters, but we feel these are reasonable estimates based on the architecture and literature on Eagle and similar fixed-coupler devices:
     idle_zz_rate_hz=22_000.0,          # 22 kHz NN ZZ; arXiv:2512.18148, arXiv:2108.04530
     coherent_fraction=0.4,             # fixed-coupler; 30-50% coherent fraction literature
     spectator_error_per_2q_gate=5e-4,  # EPLG ~1.5-2x isolated 2q error
@@ -643,9 +648,9 @@ register_hardware(HardwareProfile(
     name="ionq_forte",
     vendor="IonQ",
     system="Forte",
-    t1=1.0,
+    t1=50, #IonQ gives a T1 range of 10-100s of seconds for their ion traps; 50s is a middle-ground estimate. https://www.ionq.com/quantum-systems/forte-enterprise
     t2=1.0,
-    single_qubit_error=2e-4,
+    single_qubit_error=0.0002,
     two_qubit_error=0.004,
     spam_error=0.005,
     gate_times=GateTimes(single_qubit_ns=135_000.0, two_qubit_ns=600_000.0),
@@ -675,14 +680,15 @@ register_hardware(HardwareProfile(
     name="ionq_aria",
     vendor="IonQ",
     system="Aria",
-    t1=1.0,
+    t1=50.0, # A middle ground estimate for the listed 10-100s T1 time https://www.ionq.com/quantum-systems/aria
     t2=1.0,
-    single_qubit_error=6e-4,
+    single_qubit_error=0.0006,
     two_qubit_error=0.006,
-    spam_error=0.005,
-    gate_times=GateTimes(single_qubit_ns=135_000.0, two_qubit_ns=600_000.0),
+    spam_error=0.0039,
+    gate_times=GateTimes(single_qubit_ns=135_000.0, two_qubit_ns=600_000.0), # https://www.ionq.com/resources/ionq-aria-practical-performance
     notes="25-qubit trapped ion (21 production config). All-to-all. #AQ 20.",
     ghz_results=[],
+    # No published data on whether Aria's improved laser stability and coherence times have reduced the coherent error fraction or spectator crosstalk compared to Forte, so we conservatively reuse Forte's values here.
     idle_zz_rate_hz=0.0,
     coherent_fraction=0.4,
     spectator_error_per_2q_gate=1.5e-3,  # scaled with 2q error vs Forte
@@ -690,15 +696,16 @@ register_hardware(HardwareProfile(
 ))
 
 register_hardware(HardwareProfile(
+    # Source- https://www.emergentmind.com/topics/quantinuum-s-h2-quantum-processor
     name="quantinuum_h2",
     vendor="Quantinuum",
     system="H2-1",
-    t1=1.0,
+    t1=100.0, # Quantinuum claims a T1 >> 100s, so 100s is a conservative estimate to account for variability across qubits and over time. Quantinuum claims this is only limited by optical pumping.
     t2=1.0,
     single_qubit_error=3e-5,
-    two_qubit_error=0.0015,
-    spam_error=0.0015,
-    gate_times=GateTimes(single_qubit_ns=10_000.0, two_qubit_ns=100_000.0),
+    two_qubit_error=0.0015, #given between 1.4 and 2 (*10^-3)
+    spam_error=0.002,  
+    gate_times=GateTimes(single_qubit_ns=5_000.0, two_qubit_ns=150_000.0), # single given as 1-10 µs, 2q given as 100-200 µs
     notes=(
         "56-qubit QCCD all-to-all. First production device with 99.9% two-qubit "
         "fidelity ('three 9s'). 4 parallel gate zones. Microsoft Level 2 Resilient."
@@ -706,7 +713,7 @@ register_hardware(HardwareProfile(
     idle_zz_rate_hz=0.0,               # ions physically separated between gate zones
     coherent_fraction=0.5,             # documented quadratic coherent memory error component
     spectator_error_per_2q_gate=1e-5,  # 4 isolated gate zones; negligible cross-zone
-    mcmr_crosstalk=5e-6,               # directly from H2 datasheet v4.00 (Sep 2025)
+    mcmr_crosstalk=6.8e-6,             
     ghz_results=[
         GHZResult(
             n_qubits=50,

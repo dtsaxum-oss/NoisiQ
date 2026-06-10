@@ -5,9 +5,9 @@
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{physics}
 \usepackage{siunitx}
 \usepackage{hyperref}
-\usepackage{physics}
 \usepackage{booktabs}
 \usepackage{float}
 \usepackage{tikz}
@@ -277,9 +277,6 @@ this is calculated using the standard dimension formula:
 \section{Conclusion}
 \label{sec:conclusion}
 
-\bibliographystyle{ieeetr}
-\bibliography{refs}
-
 \begin{comment}
     Reference list to add / find: 
     GHZ paper 
@@ -326,7 +323,67 @@ Additionally, we thank the members of the 2026 UCLA Master of Quantum Science an
 Finally, we acknowledge the foundational work of the open-source quantum software community. 
 NoisiQ's development was made possible by leveraging established frameworks, particularly IBM's Qiskit and Craig Gidney's Stim.
 
+\bibliographystyle{ieeetr}
+\bibliography{refs}
+
+\clearpage
 \appendix
+
+\section{Hardware Noise Profiles}
+\label{sec:hardware_profiles}
+\paragraph{}
+    To facilitate accurate, cross-platform benchmarking, NoisiQ includes several pre-loaded hardware profiles. These profiles map published device specifications directly into NoisiQ's noise channels, including $T_1$ 
+      relaxation, $T_2$ dephasing, stochastic gate errors, coherent over-rotations, and architecture-specific crosstalk. The parameters for the currently supported devices are detailed below.
+
+\subsection{IBM Heron r3}
+\label{subsec:profile_heron}
+    The Heron processor features a 156-qubit heavy-hexagonal lattice. Unlike previous generations, it utilizes tunable couplers that significantly suppress $ZZ$ crosstalk.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 269\,\mu\text{s}$, $T_2 = 322\,\mu\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $1.6 \times 10^{-4}$, Two-qubit: $3 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $50\,\text{ns}$, Two-qubit: $200\,\text{ns}$
+        \item \textbf{SPAM Error:} $3.5 \times 10^{-3}$
+    \end{itemize}
+
+\subsection{IBM Eagle r3}
+\label{subsec:profile_eagle}
+    The Eagle processor features a 127-qubit heavy-hexagonal lattice using fixed-frequency transmon qubits and fixed couplers, resulting in higher residual $ZZ$ coupling compared to Heron.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 263\,\mu\text{s}$, $T_2 = 147\,\mu\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $5.49 \times 10^{-4}$, Two-qubit: $1.16 \times 10^{-2}$
+        \item \textbf{Gate Durations:} Single-qubit: $50\,\text{ns}$, Two-qubit: $561\,\text{ns}$
+        \item \textbf{SPAM Error:} $1.35 \times 10^{-2}$
+    \end{itemize}
+
+\subsection{Quantinuum H2-1}
+\label{subsec:profile_h2}
+    The H2-1 is a 56-qubit trapped-ion device utilizing a Quantum Charge-Coupled Device (QCCD) architecture. It features all-to-all connectivity achieved by physically shuttling ions between four parallel gate zones.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 100.0\,\text{s}$, $T_2 = 1.0\,\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $3 \times 10^{-5}$, Two-qubit: $1.5 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $5\,\mu\text{s}$, Two-qubit: $150\,\mu\text{s}$
+        \item \textbf{SPAM Error:} $2 \times 10^{-3}$
+    \end{itemize}
+
+\subsection{IonQ Forte}
+\label{subsec:profile_forte}
+    The Forte is a 36-qubit trapped-ion system that maintains a single linear chain of ions. It achieves all-to-all connectivity via individual optical addressing rather than physical shuttling.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 50.0\,\text{s}$, $T_2 = 1.0\,\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $2 \times 10^{-4}$, Two-qubit: $4 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $135\,\mu\text{s}$, Two-qubit: $600\,\mu\text{s}$
+        \item \textbf{SPAM Error:} $5 \times 10^{-3}$
+    \end{itemize}
+
+\subsection{IonQ Aria}
+\label{subsec:profile_aria}
+    The Aria is an earlier generation 25-qubit (21 production) trapped-ion system, sharing a similar linear chain architecture to the Forte but with slightly higher gate infidelities.
+    \begin{itemize}
+        \item \textbf{Coherence Times:} $T_1 = 50.0\,\text{s}$, $T_2 = 1.0\,\text{s}$
+        \item \textbf{Gate Infidelities:} Single-qubit: $6 \times 10^{-4}$, Two-qubit: $6 \times 10^{-3}$
+        \item \textbf{Gate Durations:} Single-qubit: $135\,\mu\text{s}$, Two-qubit: $600\,\mu\text{s}$
+        \item \textbf{SPAM Error:} $3.9 \times 10^{-3}$
+    \end{itemize}
 
 \section*{Supporting Examples / Code}
 \label{sec:supporting_code}
