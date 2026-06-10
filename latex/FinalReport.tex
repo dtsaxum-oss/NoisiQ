@@ -297,11 +297,34 @@ this is calculated using the standard dimension formula:
     Papers specific to noise types, i.e. T1 / T2 etc? 
 \end{comment}
 
+\section*{Future Work}
+\label{sec:future_work}
+\paragraph{}
+    While NoisiQ currently provides a foundation for noise-aware simulation and visualization, there are several key areas for future development, primarily aimed at increasing its accessibility and physical accuracy.
 
-\section*{Future Work (TEDDY-FROM POSTER)}
-\label{subsec:future_work}
+    First, we plan to expand the library's hardware integration by introducing more complex physical noise models. 
+Real quantum hardware is plagued by architecture-specific phenomena, and as we expand NoisiQ to encompass more hardware modalities and profiles, we will incorporate these effects into our simulation framework. 
+Future updates will focus on implementing detailed models for leakage (where qubits escape the computational subspace into higher energy states like $\ket{2}$), non-Markovian noise, and time-dependent crosstalk. 
+By continuously refining these models, NoisiQ will further bridge the gap between simulation and the realities of quantum hardware.
 
-\section*{Acknowledgments (from poster)}
+    Second, to support broader adoption within the quantum research and education communities, we aim to package NoisiQ for standard distribution. 
+Currently, the library must be cloned and run locally. 
+Transitioning the project to a fully packaged Python library installable via \texttt{pip} will streamline the setup process, 
+allowing users to integrate NoisiQ into their existing Jupyter Notebook workflows and research pipelines.
+
+    Finally, we would like to build a fully interactive, web-based GUI for NoisiQ. 
+Inspired by other educational tools like Quirk, this web application would allow users to construct quantum circuits using a drag-and-drop interface. 
+As users build their circuits, the backend would dynamically run NoisiQ's simulations and render the heatmaps, density matrices, and error-propagation animations in real-time directly in the browser. 
+This would drastically lower the barrier to entry, providing students and early researchers with a code-free sandbox to build physical intuition for quantum error correction and noise propagation.
+
+\section*{Acknowledgments}
+\label{sec:acknowledgments}
+\paragraph{}
+    We would like to express our gratitude to our advisors, Dr. Mohamad Niknam and Dr. Richard Ross, for their guidance, feedback, and support throughout the development of this project. 
+We thank the UCLA I-Corp program, particularly Professor Farhad Rostamian, for the invaluable experience of teaching us how to pitch ourselves and our work.
+Additionally, we thank the members of the 2026 UCLA Master of Quantum Science and Technology (MQST) cohort for their insightful discussions and testing of early software iterations. 
+Finally, we acknowledge the foundational work of the open-source quantum software community. 
+NoisiQ's development was made possible by leveraging established frameworks, particularly IBM's Qiskit and Craig Gidney's Stim.
 
 \appendix
 
