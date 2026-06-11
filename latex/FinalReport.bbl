@@ -1,0 +1,136 @@
+\begin{thebibliography}{10}
+
+\bibitem{preskill2018}
+J.~Preskill, ``Quantum computing in the {NISQ} era and beyond,'' {\em Quantum},
+  vol.~2, p.~79, 2018.
+
+\bibitem{krantz2019superconducting}
+P.~Krantz, M.~Kjaergaard, F.~Yan, T.~P. Orlando, S.~Gustavsson, and W.~D.
+  Oliver, ``A quantum engineer's guide to superconducting qubits,'' {\em
+  Applied Physics Reviews}, vol.~6, no.~2, p.~021318, 2019.
+
+\bibitem{kjaergaard2020superconducting}
+M.~Kjaergaard, M.~E. Schwartz, J.~Braum{\"u}ller, P.~Krantz, J.~I.-J. Wang,
+  S.~Gustavsson, and W.~D. Oliver, ``Superconducting qubits: Current state of
+  play,'' {\em Annual Review of Condensed Matter Physics}, vol.~11,
+  pp.~369--395, 2020.
+
+\bibitem{arute2019quantum}
+F.~Arute, K.~Arya, R.~Babbush, {\em et~al.}, ``Quantum supremacy using a
+  programmable superconducting processor,'' {\em Nature}, vol.~574, no.~7779,
+  pp.~505--510, 2019.
+
+\bibitem{ibm2023condor}
+{IBM Quantum}, ``{IBM Quantum} debuts the 1,121-qubit {Condor} processor.''
+  \url{https://www.ibm.com/quantum/blog/quantum-roadmap-2033}, 2023.
+\newblock Announced at the IBM Quantum Summit 2023. Accessed: June 2026.
+
+\bibitem{cai2019constructing}
+Z.~Cai and S.~C. Benjamin, ``Constructing smaller {Pauli} twirling sets for
+  arbitrary error channels,'' {\em Scientific Reports}, vol.~9, no.~1,
+  p.~11281, 2019.
+
+\bibitem{hashim2021randomized}
+A.~Hashim, R.~K. Naik, A.~Morvan, J.-L. Ville, B.~Mitchell, J.~M. Kreikebaum,
+  M.~Davis, E.~Smith, C.~Iancu, K.~P. O'Brien, I.~Hincks, J.~J. Wallman,
+  J.~Emerson, and I.~Siddiqi, ``Randomized compiling for scalable quantum
+  computing on a noisy superconducting quantum processor,'' {\em Physical
+  Review X}, vol.~11, no.~4, p.~041039, 2021.
+
+\bibitem{qiskit2024}
+A.~Javadi-Abhari, M.~Treinish, K.~Krsulich, C.~J. Wood, J.~Lishman, J.~Gacon,
+  S.~Martiel, P.~D. Nation, L.~S. Bishop, A.~W. Cross, B.~R. Johnson, and J.~M.
+  Gambetta, ``Quantum computing with {Qiskit},'' {\em arXiv preprint
+  arXiv:2405.08810}, 2024.
+
+\bibitem{stim2021}
+C.~Gidney, ``Stim: a fast stabilizer circuit simulator,'' {\em Quantum},
+  vol.~5, p.~497, 2021.
+
+\bibitem{openqasm2017}
+A.~W. Cross, L.~S. Bishop, J.~A. Smolin, and J.~M. Gambetta, ``Open quantum
+  assembly language,'' {\em arXiv preprint arXiv:1707.03429}, 2017.
+
+\bibitem{ibm_platform}
+{IBM Quantum}, ``{IBM Quantum Platform}.''
+  \url{https://quantum.cloud.ibm.com/computers}, 2026.
+\newblock Accessed: June 2026.
+
+\bibitem{abughanem2024}
+M.~AbuGhanem, ``{IBM} quantum computers: Evolution, performance, and future
+  directions,'' {\em arXiv preprint arXiv:2410.00916}, 2024.
+
+\bibitem{quantinuum_h2_emergentmind}
+{EmergentMind}, ``{Quantinuum's H2 Quantum Processor}.''
+  \url{https://www.emergentmind.com/topics/quantinuum-s-h2-quantum-processor},
+  2025.
+\newblock Accessed: June 2026.
+
+\bibitem{quantinuum_h2_docs}
+{Quantinuum}, ``Accessing hardware specification data.''
+  \url{https://docs.quantinuum.com/systems/user_guide/hardware_user_guide/benchmarks/hardware_data.html},
+  2025.
+\newblock Accessed: June 2026.
+
+\bibitem{ionq_forte}
+{IonQ}, ``{IonQ Forte Enterprise}.''
+  \url{https://www.ionq.com/quantum-systems/forte-enterprise}, 2024.
+\newblock Accessed: June 2026.
+
+\bibitem{ionq_forte_first}
+{IonQ}, ``{IonQ} forte: First configurable quantum computer.''
+  \url{https://www.ionq.com/resources/ionq-forte-first-configurable-quantum-computer},
+  2023.
+\newblock Accessed: June 2026.
+
+\bibitem{vandennest2008}
+M.~Van~den Nest, ``Classical simulation of quantum computation, the
+  {Gottesman-Knill} theorem, and slightly beyond,'' {\em arXiv preprint
+  arXiv:0811.0898}, 2008.
+
+\bibitem{wallman2016}
+J.~J. Wallman and J.~Emerson, ``Noise tailoring for scalable quantum
+  computation via randomized compiling,'' {\em Physical Review A}, vol.~94,
+  no.~5, p.~052325, 2016.
+
+\bibitem{emerson2007}
+J.~Emerson, M.~Silva, O.~Moussa, C.~Ryan, M.~Laforest, J.~Baugh, D.~G. Cory,
+  and R.~Laflamme, ``Symmetrized characterization of noisy quantum processes,''
+  {\em Science}, vol.~317, no.~5846, pp.~1893--1896, 2007.
+
+\bibitem{nielsenchuang2000}
+M.~A. Nielsen and I.~L. Chuang, {\em Quantum Computation and Quantum
+  Information}.
+\newblock Cambridge, UK: Cambridge University Press, 2000.
+
+\bibitem{nielsen2002}
+M.~A. Nielsen, ``A simple formula for the average gate fidelity of a quantum
+  dynamical operation,'' {\em Physics Letters A}, vol.~303, no.~4,
+  pp.~249--252, 2002.
+
+\bibitem{viola1999dynamical}
+L.~Viola, E.~Knill, and S.~Lloyd, ``Dynamical decoupling of open quantum
+  systems,'' {\em Physical Review Letters}, vol.~82, no.~12, pp.~2417--2421,
+  1999.
+
+\bibitem{quirk}
+C.~Gidney, ``Quirk: A drag-and-drop quantum circuit simulator.''
+  \url{https://algassert.com/quirk}, 2016.
+\newblock Accessed: June 2026.
+
+\bibitem{ionq_aria}
+{IonQ Staff}, ``{IonQ} aria: Practical performance.''
+  \url{https://www.ionq.com/resources/ionq-aria-practical-performance}, 2025.
+\newblock Accessed: June 2026.
+
+\bibitem{grover1996fast}
+L.~K. Grover, ``A fast quantum mechanical algorithm for database search,'' in
+  {\em Proceedings of the Twenty-Eighth Annual ACM Symposium on Theory of
+  Computing (STOC)}, pp.~212--219, Association for Computing Machinery, 1996.
+
+\bibitem{deutsch1992rapid}
+D.~Deutsch and R.~Jozsa, ``Rapid solution of problems by quantum computation,''
+  {\em Proceedings of the Royal Society of London. Series A: Mathematical and
+  Physical Sciences}, vol.~439, no.~1907, pp.~553--558, 1992.
+
+\end{thebibliography}
