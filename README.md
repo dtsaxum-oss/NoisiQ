@@ -16,7 +16,11 @@ The physics is validated against known algebraic identities and spot-checked aga
 
 EXAMPLE : 
 
-[NoisiQ-Example](https://github.com/user-attachments/assets/f21d3b45-6cc1-46ec-916f-31b68e427df0)
+[NoisiQ-Example](
+
+https://github.com/user-attachments/assets/fd8b3e05-1ef4-409f-899b-d04fd4aa797b
+
+)
 
 
 
