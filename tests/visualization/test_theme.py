@@ -62,10 +62,10 @@ def test_halo_color_alpha_is_one():
     assert halo_color(0.0)[3] == pytest.approx(1.0)
     assert halo_color(1.0)[3] == pytest.approx(1.0)
 
-def test_halo_color_zero_is_bluish():
+def test_halo_color_zero_is_pinkish():
     r, g, b, _ = halo_color(0.0)
-    # Light blue: blue channel should dominate over red
-    assert b > r
+    # Light pink: red channel should be greater than or equal to blue
+    assert r >= b
 
 def test_halo_color_one_is_reddish():
     r, g, b, _ = halo_color(1.0)

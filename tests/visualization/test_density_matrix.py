@@ -21,8 +21,11 @@ import matplotlib.pyplot as plt
 from noisiq.visualization.density_matrix import (
     plot_density_matrix,
     plot_purity_decay,
+    global_purity,
+    density_matrix_state_fidelity,
     _purity,
 )
+from noisiq.results.metrics import MetricKind
 from noisiq.backends.trajectory_backend import TrajectoryBackend
 from noisiq.noise.amplitude_damping import AmplitudeDamping
 from noisiq.ir import Circuit
@@ -168,3 +171,68 @@ def test_plot_purity_decay_accepts_existing_axes():
     returned = plot_purity_decay(results, t_values, ax=ax)
     assert returned is fig or isinstance(returned, plt.Figure)
     plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# global_purity MetricReport
+# ---------------------------------------------------------------------------
+
+def test_global_purity_pure_state_is_one():
+    rho = _pure_rho(n_qubits=1)
+    report = global_purity(rho)
+    assert report.kind == MetricKind.GLOBAL_PURITY
+    assert abs(report.value - 1.0) < 1e-10
+
+
+def test_global_purity_maximally_mixed_2q():
+    rho = _maximally_mixed(n_qubits=2)
+    report = global_purity(rho)
+    assert abs(report.value - 0.25) < 1e-10
+
+
+def test_global_purity_report_fields_are_populated():
+    report = global_purity(_pure_rho(), backend="TestBackend", noise_model="none")
+    assert report.backend == "TestBackend"
+    assert report.noise_model == "none"
+    assert report.method
+    assert report.definition
+
+
+# ---------------------------------------------------------------------------
+# density_matrix_state_fidelity MetricReport
+# ---------------------------------------------------------------------------
+
+def test_dm_fidelity_pure_ref_returns_one_for_matching_state():
+    psi = np.array([1.0, 0.0], dtype=complex)
+    rho = _pure_rho(n_qubits=1)
+    report = density_matrix_state_fidelity(psi, rho)
+    assert report.kind == MetricKind.DENSITY_MATRIX_STATE_FIDELITY
+    assert abs(report.value - 1.0) < 1e-10
+
+
+def test_dm_fidelity_pure_ref_definition_uses_bra_ket_formula():
+    psi = np.array([1.0, 0.0], dtype=complex)
+    rho = _pure_rho(n_qubits=1)
+    report = density_matrix_state_fidelity(psi, rho)
+    assert "ψ" in report.definition
+    assert "Uhlmann" not in report.definition
+
+
+def test_dm_fidelity_mixed_ref_returns_one_for_matching_state():
+    rho = _pure_rho(n_qubits=1)
+    report = density_matrix_state_fidelity(rho, rho)
+    assert abs(report.value - 1.0) < 1e-10
+
+
+def test_dm_fidelity_mixed_ref_definition_uses_uhlmann_formula():
+    rho = _pure_rho(n_qubits=1)
+    report = density_matrix_state_fidelity(rho, rho)
+    assert "Uhlmann" in report.definition or "Tr(√" in report.definition
+
+
+def test_dm_fidelity_orthogonal_pure_states_is_zero():
+    psi = np.array([1.0, 0.0], dtype=complex)
+    rho_excited = np.zeros((2, 2), dtype=complex)
+    rho_excited[1, 1] = 1.0
+    report = density_matrix_state_fidelity(psi, rho_excited)
+    assert abs(report.value) < 1e-10

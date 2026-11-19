@@ -22,11 +22,39 @@ from ...ir.circuit import Circuit
 from ...noise.hardware_noise import HardwareProfile
 from .heatmap import plot_error_heatmap
 from ..theme import (
+    CHART_BAR_EDGE_WIDTH,
+    CHART_BAR_HEIGHT,
+    CHART_GRID_ALPHA,
+    CHART_TITLE_FONT_SIZE,
     CLIFFORD_GATE_COLOR,
     ERROR_COLOR,
+    HARDWARE_CMP_ASPECT_RATIO,
+    HARDWARE_CMP_BAR_ALPHA,
+    HARDWARE_CMP_FOOTER_FONT_SIZE,
+    HARDWARE_CMP_FOOTER_Y,
+    HARDWARE_CMP_HEATMAP_WIDTH_PAD,
+    HARDWARE_CMP_HEIGHT_RATIOS,
+    HARDWARE_CMP_NOTE_FONT_SIZE,
+    HARDWARE_CMP_NOTE_X_OFFSET,
+    HARDWARE_CMP_PANEL_TITLE_FONT_SIZE,
+    HARDWARE_CMP_PANEL_TITLE_PAD,
+    HARDWARE_CMP_REFLINE_LABEL_FONT_SIZE,
+    HARDWARE_CMP_REFLINE_LABEL_Y_OFFSET,
+    HARDWARE_CMP_SUBPLOT_BOTTOM,
+    HARDWARE_CMP_SUBPLOT_HSPACE,
+    HARDWARE_CMP_SUBPLOT_LEFT,
+    HARDWARE_CMP_SUBPLOT_RIGHT,
+    HARDWARE_CMP_SUBPLOT_TOP,
+    HARDWARE_CMP_SUPTITLE_FONT_SIZE,
+    HARDWARE_CMP_SUPTITLE_Y,
+    HARDWARE_CMP_XLIM_MAX,
+    HARDWARE_CMP_XLABEL_FONT_SIZE,
+    HARDWARE_CMP_YLIM_BOTTOM_PAD,
+    HARDWARE_CMP_YLIM_TOP_OFFSET,
+    HARDWARE_CMP_YTICK_FONT_SIZE,
+    CIRCUIT_WIDTH_PER_LAYER,
+    CIRCUIT_MIN_WIDTH,
     WIRE_COLOR,
-    CHART_TITLE_FONT_SIZE,
-    CHART_GRID_ALPHA,
 )
 
 
@@ -36,6 +64,8 @@ def plot_hardware_comparison(
     profile: HardwareProfile,
     title: Optional[str] = None,
     figsize: Optional[tuple] = None,
+    noise_config: Optional[dict] = None,
+    heat_scale: str = "absolute_log",
 ) -> plt.Figure:
     """Composite figure: error heatmap + fidelity comparison panel.
 
@@ -59,7 +89,7 @@ def plot_hardware_comparison(
         matplotlib Figure.
 
     Example:
-        noise  = profile.to_pauli_noise_model(circuit)
+        noise  = profile.to_noise_model(circuit, representation="pauli_twirl")
         result = ManyShotRunner().run(circuit, n_shots=2000, noise_config=noise)
         fig    = plot_hardware_comparison(result, circuit, profile)
         plt.show()
@@ -68,33 +98,50 @@ def plot_hardware_comparison(
     n_qubits = circuit.n_qubits
 
     if figsize is None:
-        heatmap_w = max(n_layers * 1.4 + 2.0, 6.0)
-        figsize = (heatmap_w, heatmap_w * 0.9)
+        heatmap_w = max(CIRCUIT_MIN_WIDTH, CIRCUIT_WIDTH_PER_LAYER * n_layers + HARDWARE_CMP_HEATMAP_WIDTH_PAD)
+        figsize = (heatmap_w, heatmap_w * HARDWARE_CMP_ASPECT_RATIO)
 
     fig = plt.figure(figsize=figsize, constrained_layout=False)
-    fig.subplots_adjust(left=0.12, right=0.95, top=0.90, bottom=0.08, hspace=0.45)
+    fig.subplots_adjust(
+        left=HARDWARE_CMP_SUBPLOT_LEFT,
+        right=HARDWARE_CMP_SUBPLOT_RIGHT,
+        top=HARDWARE_CMP_SUBPLOT_TOP,
+        bottom=HARDWARE_CMP_SUBPLOT_BOTTOM,
+        hspace=HARDWARE_CMP_SUBPLOT_HSPACE,
+    )
 
-    gs = gridspec.GridSpec(2, 1, figure=fig, height_ratios=[2.2, 1.0])
+    gs = gridspec.GridSpec(
+        2, 1,
+        figure=fig,
+        height_ratios=HARDWARE_CMP_HEIGHT_RATIOS,
+        left=HARDWARE_CMP_SUBPLOT_LEFT,
+        right=HARDWARE_CMP_SUBPLOT_RIGHT,
+        top=HARDWARE_CMP_SUBPLOT_TOP,
+        bottom=HARDWARE_CMP_SUBPLOT_BOTTOM,
+        hspace=HARDWARE_CMP_SUBPLOT_HSPACE,
+    )
+
+    if noise_config is None:
+        noise_config = profile.to_pauli_noise_model(circuit)
 
     # ── Top: error heatmap ────────────────────────────────────────────────────
     ax_heat = fig.add_subplot(gs[0])
     plot_error_heatmap(
         result,
         circuit,
+        noise_config=noise_config,
+        heat_scale=heat_scale,
         title=f"{profile.system}  —  {result.n_shots} shots,  "
               f"{n_qubits}-qubit GHZ",
         ax=ax_heat,
+        finalize_layout=False,
+        idle_cbar_bbox_y=-0.14,
     )
 
     # ── Bottom: fidelity comparison ───────────────────────────────────────────
     ax_bar = fig.add_subplot(gs[1])
     _draw_fidelity_comparison(ax_bar, result, profile, circuit.n_qubits)
 
-    fig.suptitle(
-        title or f"NoisiQ  ·  {profile.vendor} {profile.system}  noise model",
-        fontsize=CHART_TITLE_FONT_SIZE + 1,
-        y=0.97,
-    )
     return fig
 
 
@@ -108,9 +155,14 @@ def _draw_fidelity_comparison(
     profile: HardwareProfile,
     n_qubits_simulated: int,
 ) -> None:
-    """Draw a horizontal bar chart comparing NoisiQ fidelity to hardware data."""
+    """Draw a horizontal bar chart comparing NoisiQ zero-error survival to hardware state fidelity.
 
-    sim_fidelity = result.zero_error_fraction
+    Note: these are different quantities. NoisiQ reports no-error survival probability
+    (fraction of shots with no sampled error event). Hardware numbers are experimental
+    state fidelities. They are shown together for scale reference only.
+    """
+
+    zero_error_fraction = result.zero_error_fraction
 
     # Collect published fidelities (only those with a non-None value)
     pub = [r for r in profile.ghz_results if r.fidelity is not None]
@@ -122,9 +174,9 @@ def _draw_fidelity_comparison(
     bar_notes:  list[str] = []
 
     bar_labels.append(f"NoisiQ  ({n_qubits_simulated}q)")
-    bar_values.append(sim_fidelity)
+    bar_values.append(zero_error_fraction)
     bar_colors.append(CLIFFORD_GATE_COLOR)
-    bar_notes.append(f"{sim_fidelity:.3f}  ← zero-error shot fraction")
+    bar_notes.append(f"{zero_error_fraction:.3f}  ← no-error survival (not state fidelity)")
 
     for r in pub:
         bar_labels.append(f"Hardware  ({r.n_qubits}q,  {r.year})")
@@ -139,28 +191,28 @@ def _draw_fidelity_comparison(
         bar_values,
         color=bar_colors,
         edgecolor=WIRE_COLOR,
-        linewidth=0.8,
-        height=0.55,
-        alpha=0.85,
+        linewidth=CHART_BAR_EDGE_WIDTH,
+        height=CHART_BAR_HEIGHT,
+        alpha=HARDWARE_CMP_BAR_ALPHA,
     )
 
     # Value labels
     for bar, note in zip(bars, bar_notes):
         ax.text(
-            bar.get_width() + 0.005,
+            bar.get_width() + HARDWARE_CMP_NOTE_X_OFFSET,
             bar.get_y() + bar.get_height() / 2,
             note,
             va="center",
             ha="left",
-            fontsize=7.5,
+            fontsize=HARDWARE_CMP_NOTE_FONT_SIZE,
             color=WIRE_COLOR,
         )
 
     ax.set_yticks(y_pos)
-    ax.set_yticklabels(bar_labels, fontsize=8.5)
-    ax.set_xlabel("Fidelity estimate", fontsize=9)
-    ax.set_xlim(0, 1.35)
-    ax.set_ylim(-0.6, len(bar_labels) - 0.4)
+    ax.set_yticklabels(bar_labels, fontsize=HARDWARE_CMP_YTICK_FONT_SIZE)
+    ax.set_xlabel("No-error survival  /  state fidelity", fontsize=HARDWARE_CMP_XLABEL_FONT_SIZE)
+    ax.set_xlim(0, HARDWARE_CMP_XLIM_MAX)
+    ax.set_ylim(HARDWARE_CMP_YLIM_BOTTOM_PAD, len(bar_labels) + HARDWARE_CMP_YLIM_TOP_OFFSET)
     ax.invert_yaxis()
     ax.set_frame_on(False)
     ax.xaxis.grid(True, linestyle="--", alpha=CHART_GRID_ALPHA)
@@ -177,17 +229,14 @@ def _draw_fidelity_comparison(
         f"T2 λ per 2Q gate={lam:.5f}"
     )
     ax.text(
-        0.0, -0.22,
+        0.0, HARDWARE_CMP_FOOTER_Y,
         footer,
         transform=ax.transAxes,
-        fontsize=7,
+        fontsize=HARDWARE_CMP_FOOTER_FONT_SIZE,
         color="gray",
         va="top",
     )
 
-    ax.set_title("Fidelity: NoisiQ simulation vs published hardware", fontsize=9, pad=6)
-
-    # Dashed reference line at 0.5 (maximally mixed)
-    ax.axvline(0.5, color="gray", linestyle=":", linewidth=0.8, alpha=0.5)
-    ax.text(0.5, len(bar_labels) - 0.3, "random\nguessing", ha="center",
-            fontsize=6.5, color="gray", va="top")
+    ax.set_title("NoisiQ simulation vs. published hardware",
+                 fontsize=HARDWARE_CMP_PANEL_TITLE_FONT_SIZE,
+                 pad=HARDWARE_CMP_PANEL_TITLE_PAD)

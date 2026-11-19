@@ -56,3 +56,56 @@ class KrausChannel(ABC):
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.describe()})"
+
+
+class CombinedChannel:
+    """
+    Multiple noise channels applied sequentially to the same gate.
+
+    Wraps a list of heterogeneous channels (KrausChannel subclasses,
+    PauliError, CorrelatedPauliError) into a single object so that
+    to_noise_model() can compose decoherence + depolarizing + coherent ZZ
+    + spectator errors while preserving the dict[op_idx → single channel]
+    contract that backends and tests already expect.
+
+    The channels are applied in list order (index 0 first). Because each
+    inner channel may act on a different number of qubits (e.g. single-qubit
+    Dephasing followed by two-qubit CoherentRotation), no Kraus Cartesian
+    product is taken — the backend dispatches each inner channel individually
+    using its own type-specific path.
+
+    Args:
+        channels: Non-empty list of channel objects. Accepted types are any
+                  KrausChannel subclass, PauliError, or CorrelatedPauliError.
+
+    Raises:
+        ValueError: If channels is empty.
+
+    Example:
+        from noisiq.noise import AmplitudeDamping, CoherentRotation
+        from noisiq.noise.kraus_channels import CombinedChannel
+
+        combined = CombinedChannel([
+            AmplitudeDamping(T1=300e-6, t=200e-9),
+            CoherentRotation(axis='Z', epsilon=0.05),
+        ])
+    """
+
+    def __init__(self, channels: list) -> None:
+        if not channels:
+            raise ValueError("CombinedChannel requires at least one channel.")
+        self.channels = list(channels)
+
+    def describe(self) -> dict:
+        """Return a summary dict listing each inner channel."""
+        return {
+            "type": "CombinedChannel",
+            "n_channels": len(self.channels),
+            "channels": [
+                c.describe() if hasattr(c, "describe") else repr(c)
+                for c in self.channels
+            ],
+        }
+
+    def __repr__(self) -> str:
+        return f"CombinedChannel({len(self.channels)} channels: {[type(c).__name__ for c in self.channels]})"

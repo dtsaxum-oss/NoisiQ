@@ -25,7 +25,12 @@ class TsimBackend:
         'CNOT': 'CX',
         'CX': 'CX',
         'CZ': 'CZ',
+        'SWAP': 'SWAP',
+        'CS': 'CS',
+        'CS_DAG': 'CS_DAG',
+        'CCZ': 'CCZ',
         'I': 'I',
+        'IDLE': 'I',
     }
 
     def run(
@@ -70,15 +75,24 @@ class TsimBackend:
         lines = []
         noise_config = noise_config or {}
 
-        for op_idx, op in enumerate(circuit.operations):
-            # Map gate
+        for op_idx, op in sorted(enumerate(circuit.operations),
+                                 key=lambda kv: (kv[1].t, kv[0])):
             name = op.gate.name.upper()
-            if name not in self.GATE_MAP:
-                raise ValueError(f"Gate {name} not supported by TsimBackend")
-
-            tsim_name = self.GATE_MAP[name]
             qubits_str = " ".join(map(str, op.qubits))
-            lines.append(f"{tsim_name} {qubits_str}")
+
+            # Parameterized phase gates: extract angle from gate name "P(θ)" / "RZ(θ)"
+            if name.startswith('P(') or name.startswith('RZ('):
+                try:
+                    theta = float(op.gate.name[op.gate.name.index('(') + 1:-1])
+                except (ValueError, IndexError):
+                    raise ValueError(f"Cannot parse angle from gate name '{op.gate.name}'")
+                tsim_prefix = 'RZ' if name.startswith('RZ(') else 'RZ'
+                lines.append(f"{tsim_prefix}({theta}) {qubits_str}")
+            elif name not in self.GATE_MAP:
+                raise ValueError(f"Gate {name} not supported by TsimBackend")
+            else:
+                tsim_name = self.GATE_MAP[name]
+                lines.append(f"{tsim_name} {qubits_str}")
 
             # Apply noise
             if op_idx in noise_config:
