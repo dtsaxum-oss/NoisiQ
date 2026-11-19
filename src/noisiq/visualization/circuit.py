@@ -190,7 +190,13 @@ def _box(ax, x, y_top, y_bottom, width, label, face, style, *, dashed=False, z=3
         ls="--" if dashed else "-",
     )
     ax.add_patch(patch)
-    if label:
+    if label and "\n" in label:  # stacked: gate name over its parameters
+        name, params = label.split("\n", 1)
+        yc = (y_top + y_bottom) / 2
+        kw = dict(ha="center", va="center", family=style.font, color=style.text_color, zorder=z + 0.1)
+        ax.text(x, yc + 0.11, name, fontsize=style.fontsize * 0.85, **kw)
+        ax.text(x, yc - 0.12, params, fontsize=style.fontsize * 0.68, **kw)
+    elif label:
         size = style.fontsize * (0.95 if len(label) <= 3 else 0.8)
         ax.text(
             x,

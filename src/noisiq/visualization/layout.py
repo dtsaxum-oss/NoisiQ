@@ -32,13 +32,32 @@ def _fmt_seconds(t: float) -> str:
     return f"{t:.3g}s"  # pragma: no cover
 
 
+def _airy(label: str) -> str:
+    """Stack parametric labels: ``P(π/8)`` becomes ``P`` over ``π/8`` (two lines).
+
+    Keeps boxes narrow and avoids the angle text crowding the gate name.
+    """
+    if label.endswith(")") and "(" in label:
+        name, _, args = label.partition("(")
+        return f"{name}\n{args[:-1]}"
+    return label
+
+
+def label_width_chars(label: str) -> float:
+    """Effective width of a (possibly stacked) label, in characters."""
+    lines = label.split("\n")
+    if len(lines) == 1:
+        return float(len(label))
+    return max(len(lines[0]), 0.8 * max(len(x) for x in lines[1:]))
+
+
 def instruction_label(inst) -> str:
     """Short label drawn inside an instruction's box."""
     if isinstance(inst, Operation):
         g = inst.gate
         if g.base is not None and g.num_controls:
-            return g.base.display_label if not g.params else g.display_label.lstrip("C")
-        return g.display_label
+            return _airy(g.base.display_label if not g.params else g.display_label.lstrip("C"))
+        return _airy(g.display_label)
     if isinstance(inst, Measure):
         return "M" if inst.basis == "Z" else f"M{inst.basis}"
     if isinstance(inst, Reset):
@@ -103,7 +122,7 @@ class CircuitLayout:
                     columns.append([])
                 columns[col].append(span)
                 label = instruction_label(inst)
-                width = max(style.gate_min_width, 0.3 + style.char_width * len(label))
+                width = max(style.gate_min_width, 0.42 + style.char_width * label_width_chars(label))
                 if (
                     isinstance(inst, Operation)
                     and inst.gate.num_controls

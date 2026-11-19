@@ -43,8 +43,12 @@ def _pick_shot(trace: PropagationTrace, shot: int | None) -> int:
         if not 0 <= shot < trace.n_shots:
             raise ValueError(f"shot must be in [0, {trace.n_shots}).")
         return shot
-    first = trace.first_faulty_shot()
-    return 0 if first is None else first
+    # Prefer a shot where an error actually flipped a measurement (the instructive case),
+    # then any shot with a fault, then shot 0.
+    for candidate in (trace.first_faulty_shot(harmful=True), trace.first_faulty_shot()):
+        if candidate is not None:
+            return candidate
+    return 0
 
 
 def plot_propagation(
@@ -62,7 +66,8 @@ def plot_propagation(
     Args:
         trace: A trace (or a Result that carries one).
         step: Number of completed layers (0 … n_layers).
-        shot: Which recorded shot to show (default: the first one with a fault).
+        shot: Which recorded shot to show (default: the first one where an error flipped a
+            measurement, else the first one with any fault).
     """
     trace = _as_trace(trace)
     style = style or get_style()
@@ -105,7 +110,7 @@ def plot_propagation(
                     ax.plot(
                         [a, b],
                         [y, y],
-                        color=cmap(0.15 + 0.85 * min(1.0, v)),
+                        color=cmap(0.3 + 0.6 * min(1.0, v)),
                         lw=lw,
                         alpha=0.35 + 0.6 * min(1.0, v),
                         solid_capstyle="butt",
@@ -117,15 +122,20 @@ def plot_propagation(
         visible = e.layer < step or (e.kind == "injected" and e.index is None and step == 0 and e.layer == 0)
         if not visible:
             continue
+        color = colors.get(e.pauli, colors["other"])
         if e.index is not None and e.index in layout.placed:
+            # directly above the gate (or the measurement, for readout faults)
             x = layout.placed[e.index].x
-        elif e.layer < len(layout.layer_columns):
-            a, b = layout.layer_span(e.layer)
-            x = (a + b) / 2
+            y = layout.qubit_y(e.qubit) + style.gate_height / 2 + 0.17
         else:
-            x = layout.x_max - 0.3
-        y = layout.qubit_y(e.qubit) + style.gate_height / 2 + 0.05
-        ax.add_patch(RegularPolygon((x, y), 5, radius=0.13, color=colors.get(e.pauli, colors["other"]), zorder=5))
+            # idle fault: on the wire, in the middle of that layer's time window
+            if e.layer < len(layout.layer_columns):
+                a, b = layout.layer_span(e.layer)
+                x = (a + b) / 2
+            else:
+                x = layout.x_max - 0.3
+            y = layout.qubit_y(e.qubit)
+        ax.add_patch(RegularPolygon((x, y), 5, radius=0.12, color=color, ec="white", lw=0.8, zorder=7))
 
     # badges at the current boundary
     xb = layout.boundary_x(step)
@@ -161,14 +171,14 @@ def plot_propagation(
                     zorder=6,
                 )
 
-    # flipped measurements at the end
-    if step == n_layers and trace.measurement_flips is not None:
+    # measurements whose recorded bit was flipped (shown once that measurement has happened)
+    if trace.measurement_flips is not None:
         flips = trace.measurement_flips[shot]
         from ..ir.instructions import Measure
 
         for idx, p in layout.placed.items():
             inst = circuit[idx]
-            if isinstance(inst, Measure) and inst.clbit < len(flips) and flips[inst.clbit]:
+            if isinstance(inst, Measure) and inst.layer < step and inst.clbit < len(flips) and flips[inst.clbit]:
                 y = layout.qubit_y(inst.qubit)
                 ax.add_patch(Circle((p.x, y), 0.42, fill=False, ec="#d62728", lw=2.2, zorder=6))
     return drawing

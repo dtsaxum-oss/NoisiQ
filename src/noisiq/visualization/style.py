@@ -22,7 +22,7 @@ class Style:
     fontsize: float = 10.0
     gate_height: float = 0.62
     gate_min_width: float = 0.62
-    char_width: float = 0.115  # extra box width per label character
+    char_width: float = 0.118  # extra box width per label character
     column_gap: float = 0.38
     wire_color: str = "#444444"
     wire_width: float = 1.1
@@ -43,7 +43,7 @@ class Style:
         }
     )
     heat_cmap: str = "YlOrRd"
-    deviation_cmap: str = "magma_r"
+    deviation_cmap: str = "Reds"
     pauli_colors: dict = field(default_factory=lambda: dict(PAULI_COLORS))
     dpi: int = 110
 

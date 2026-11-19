@@ -142,20 +142,23 @@ def plot_error_heatmap(
             y = layout.qubit_y(q)
             _glow(ax, p.x, y, p.width, style.gate_height, cmap(norm(v)), strength(v))
             if annotate:
+                # Put the value just below the box, shifted right of the gate's vertical
+                # connector line, on a white chip so wires and lines never cut through it.
                 ax.text(
-                    p.x,
-                    y - style.gate_height / 2 - 0.05,
+                    p.x + 0.06,
+                    y - style.gate_height / 2 - 0.04,
                     f"{100 * v:.2g}%",
-                    ha="center",
+                    ha="left",
                     va="top",
-                    fontsize=style.fontsize * 0.6,
-                    zorder=4,
-                    color="#333333",
+                    fontsize=style.fontsize * 0.62,
+                    zorder=6,
+                    color="#222222",
+                    bbox=dict(boxstyle="round,pad=0.12", fc="white", ec="#cccccc", lw=0.4, alpha=0.92),
                 )
 
     if colorbar:
         sm = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
         label = "fault probability (per gate & qubit)" if metric == "rate" else "expected corrupted outputs"
         cb = drawing.fig.colorbar(sm, ax=ax, fraction=0.025, pad=0.01)
-        cb.set_label(label, fontsize=style.fontsize * 0.8)
+        cb.set_label(label, fontsize=style.fontsize * 0.8, labelpad=10)
     return drawing

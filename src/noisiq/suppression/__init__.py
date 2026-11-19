@@ -72,7 +72,7 @@ def apply_dd(
     min_free = max(k, min_idle_layers or k)
     targets = set(range(circuit.n_qubits) if qubits is None else qubits)
 
-    out = Circuit(circuit.n_qubits, circuit.n_clbits, circuit.name and f"{circuit.name}_dd_{key}")
+    out = Circuit(circuit.n_qubits, circuit.n_clbits, circuit.name and f"{circuit.name} + {key} DD")
     out.registers = list(circuit.registers)
     plan: dict[int, list] = {}  # instruction index -> replacement list (for delays)
     extra: list[tuple[int, int, G.Gate]] = []  # (layer, qubit, gate) pulses in free layers

@@ -44,8 +44,8 @@ def plot_error_budget(
     """
     style = style or get_style()
     rows = result.error_budget(metric=metric, include_idle=include_idle)
-    shown = rows[:top]
-    rest = rows[top:]
+    shown = [r for r in rows[:top] if r["share"] >= 0.0005]  # hide rows that would print as 0.0%
+    rest = rows[len(shown) :]
     if rest:
         shown = shown + [
             {
@@ -91,7 +91,7 @@ def plot_qubit_errors(result: Result, *, ax: plt.Axes | None = None, style: Styl
     ax.set_xticks(x, [f"q{q}" for q in x])
     ax.set_ylabel("faults per shot")
     ax.set_title("Faults per qubit", fontsize=style.fontsize)
-    ax.legend(frameon=False, fontsize=style.fontsize * 0.8)
+    ax.legend(frameon=False, fontsize=style.fontsize * 0.8, loc="upper left", bbox_to_anchor=(1.0, 1.0))
     ax.spines[["top", "right"]].set_visible(False)
     fig.tight_layout()
     return fig
@@ -166,8 +166,10 @@ def plot_comparison(
     fig, ax = _ax(ax, (max(4, 1.1 * len(labels) + 1.5), 3.4))
     x = np.arange(len(labels))
     ax.bar(x, [v for v, _ in vals], yerr=[e for _, e in vals], color="#72b7b2", edgecolor="#333333", capsize=4)
-    for xi, (v, _) in zip(x, vals):
-        ax.text(xi, v, f"{v:.3f}", ha="center", va="bottom", fontsize=style.fontsize * 0.8)
+    top = max((v + e for v, e in vals), default=1.0) or 1.0
+    for xi, (v, e) in zip(x, vals):
+        ax.text(xi, v + e + 0.02 * top, f"{v:.3f}", ha="center", va="bottom", fontsize=style.fontsize * 0.8)
+    ax.set_ylim(0, top * 1.15)
     ax.set_xticks(x, labels, rotation=20 if len(labels) > 4 else 0)
     names = {
         "fault_free": "fault-free fraction",

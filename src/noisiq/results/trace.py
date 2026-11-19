@@ -87,9 +87,16 @@ class PropagationTrace:
     def events_for(self, shot: int = 0) -> list[FaultEvent]:
         return [e for e in self.events if e.shot == shot]
 
-    def first_faulty_shot(self) -> int | None:
-        """Index of the first shot in which any fault occurred (or ``None``)."""
+    def first_faulty_shot(self, harmful: bool = False) -> int | None:
+        """Index of the first shot in which any fault occurred (or ``None``).
+
+        With ``harmful=True``, only shots in which a measured bit ended up flipped count.
+        """
         shots = sorted({e.shot for e in self.events})
+        if harmful:
+            if self.measurement_flips is None:
+                return None
+            shots = [s for s in shots if s < len(self.measurement_flips) and self.measurement_flips[s].any()]
         return shots[0] if shots else None
 
     def __repr__(self) -> str:

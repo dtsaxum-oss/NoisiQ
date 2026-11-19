@@ -159,3 +159,18 @@ def test_random_circuits_render_everything(seed):
     nq.plot_propagation(r)
     nq.plot_error_budget(r)
     plt.close("all")
+
+
+def test_harmful_shot_selection_and_label_stacking():
+    r = nq.simulate(
+        nq.algorithms.repetition_code(3, 1),
+        NoiseModel.uniform_depolarizing(0.03, readout=0.02),
+        shots=300,
+        seed=2,
+        trace_shots=60,
+    )
+    shot = r.trace.first_faulty_shot(harmful=True)
+    assert shot is not None and r.trace.measurement_flips[shot].any()
+    assert r.trace.first_faulty_shot() <= shot
+    lay = CircuitLayout.from_circuit(nq.Circuit(1).p(np.pi / 8, 0))
+    assert lay.to_dict()["instructions"][0]["label"] == "P\nπ/8"
