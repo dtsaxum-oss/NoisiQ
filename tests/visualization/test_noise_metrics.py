@@ -3,13 +3,13 @@
 import numpy as np
 import pytest
 
-from src.noisiq.noise.pauli_error import PauliError
-from src.noisiq.noise.correlated_errors import CorrelatedPauliError
-from src.noisiq.noise.coherent_errors import CoherentRotation, StochasticCoherentRotation
-from src.noisiq.noise.amplitude_damping import AmplitudeDamping
-from src.noisiq.noise.t2_dephasing import Dephasing
-from src.noisiq.noise.kraus_channels import CombinedChannel
-from src.noisiq.visualization.noise_metrics import (
+from noisiq.noise.pauli_error import PauliError
+from noisiq.noise.correlated_errors import CorrelatedPauliError
+from noisiq.noise.coherent_errors import CoherentRotation, StochasticCoherentRotation
+from noisiq.noise.amplitude_damping import AmplitudeDamping
+from noisiq.noise.t2_dephasing import Dephasing
+from noisiq.noise.kraus_channels import CombinedChannel
+from noisiq.visualization.noise_metrics import (
     combine_independent_probabilities,
     channel_event_probability,
     qualitative_burden_label,
