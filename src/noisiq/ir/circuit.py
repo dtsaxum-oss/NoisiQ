@@ -1,547 +1,613 @@
+"""The :class:`Circuit` container.
+
+A circuit is an ordered list of :mod:`instructions <noisiq.ir.instructions>`, each
+placed in a *layer* (time step). Instructions are scheduled "as soon as possible"
+unless an explicit ``layer=`` is given; two instructions may never share a qubit in
+the same layer. Simulators execute instructions in ``(layer, insertion order)``.
+
+Example:
+    >>> import noisiq as nq
+    >>> c = nq.Circuit(3).h(0).cx(0, 1).cx(1, 2).measure_all()
+    >>> c.depth
+    4
+"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from collections import Counter
+from collections.abc import Iterable, Iterator, Sequence
+from typing import Union
 
-from . import gates
-from .classical import ClassicalBit, ClassicalRegister, Measurement, ConditionalOp
+import numpy as np
 
-Qubits = Tuple[int, ...]
+from . import gates as G
+from .gates import Gate
+from .instructions import (
+    Barrier,
+    ClassicalRegister,
+    Condition,
+    Delay,
+    Instruction,
+    Measure,
+    Operation,
+    Reset,
+)
 
-# Discriminated union of all operation types that may appear in circuit.operations.
-# All loops over circuit.operations MUST isinstance-check before accessing
-# Operation-specific attributes (op.gate, op.qubits).
-CircuitOp = Union["Operation", Measurement, ConditionalOp]
+__all__ = ["Circuit"]
+
+QubitArg = Union[int, Iterable[int]]
+ConditionArg = Union[None, Condition, int, ClassicalRegister, tuple]
 
 
-def _get_qubits(op: Any) -> Tuple[int, ...]:
-    """Return the qubit indices touched by *any* CircuitOp variant.
+def _as_qubit_list(q: QubitArg) -> list[int]:
+    if isinstance(q, (int, np.integer)):
+        return [int(q)]
+    return [int(x) for x in q]
 
-    - ``Operation``   → ``op.qubits`` (tuple field)
-    - ``ConditionalOp`` → ``op.qubits`` (property → inner.qubits)
-    - ``Measurement`` → ``(op.qubit,)`` (singular int field)
-    - unknown         → empty tuple (safe fallback for future types)
-    """
-    if isinstance(op, Operation):
-        return op.qubits
-    if isinstance(op, Measurement):
-        return (op.qubit,)
-    if isinstance(op, ConditionalOp):
-        return op.qubits
-    # Fallback for any future union member or test stubs
-    if hasattr(op, "qubits"):
-        return tuple(op.qubits)
-    if hasattr(op, "qubit"):
-        return (op.qubit,)
-    return ()
 
-## Represents a single operation/gate in a quantum circuit, with its name, target qubits, time, and optional parameters and metadata.
-@dataclass(frozen=True)
-class Operation:
-    """
-    One gate/operation in a circuit.
-
-    Example:
-        Operation(gate=gates.H, qubits=(0,), t=0)
-    """
-    gate: gates.Gate
-    qubits: Qubits
-    t: int
-    params: Optional[Dict[str, Any]] = None
-    meta: Optional[Dict[str, Any]] = None
-
-    ## Removes parameters and meta from printing if they're None, to reduce clutter
-    def __repr__(self) -> str:
-        parts = [f"gate={self.gate.name!r}", f"qubits={self.qubits!r}", f"t={self.t!r}"]
-        if self.params is not None:
-            parts.append(f"params={self.params!r}")
-        if self.meta is not None:
-            parts.append(f"meta={self.meta!r}")
-        return f"Operation({', '.join(parts)})"
-
-## A quantum circuit, consisting of a number of qubits and a list of operations based on the operation class above.
-@dataclass
 class Circuit:
-    """
-    A quantum circuit described as:
-      - number of qubits
-      - a list/tuple of operations
-    """
-    n_qubits: int
-    # CircuitOp = Union[Operation, Measurement, ConditionalOp].
-    # Do not assume op.gate exists — use isinstance(op, Operation) first.
-    operations: List["CircuitOp"] = field(default_factory=list)
-    classical_registers: List[ClassicalRegister] = field(default_factory=list)
-    name: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    """A quantum circuit on ``n_qubits`` qubits and ``n_clbits`` classical bits.
 
-    def add_gate(
+    Args:
+        n_qubits: Number of qubits (>= 1).
+        n_clbits: Number of classical bits to pre-allocate. More are allocated
+            automatically by :meth:`measure`.
+        name: Optional name used in plot titles.
+
+    All builder methods return ``self`` so calls can be chained. Single-qubit
+    builders accept an int or an iterable of qubits (``c.h(range(3))``).
+    """
+
+    def __init__(self, n_qubits: int, n_clbits: int = 0, name: str | None = None):
+        if not isinstance(n_qubits, (int, np.integer)) or n_qubits < 1:
+            raise ValueError(f"n_qubits must be a positive integer, got {n_qubits!r}.")
+        if n_clbits < 0:
+            raise ValueError("n_clbits must be >= 0.")
+        self.n_qubits: int = int(n_qubits)
+        self.n_clbits: int = int(n_clbits)
+        self.name = name
+        self.registers: list[ClassicalRegister] = []
+        self._instructions: list[Instruction] = []
+        self._frontier = [0] * self.n_qubits  # first free layer per qubit
+        self._clbit_ready: dict[int, int] = {}  # clbit -> first layer after its last write
+        self._occupied: set[tuple[int, int]] = set()  # (layer, qubit)
+
+    # ================================================================ core
+    @property
+    def instructions(self) -> list[Instruction]:
+        """All instructions in insertion order (read-only copy)."""
+        return list(self._instructions)
+
+    @property
+    def operations(self) -> list[Operation]:
+        """Only the gate operations."""
+        return [i for i in self._instructions if isinstance(i, Operation)]
+
+    def ordered(self) -> list[tuple[int, Instruction]]:
+        """``(index, instruction)`` pairs in execution order ``(layer, index)``."""
+        return sorted(enumerate(self._instructions), key=lambda kv: (kv[1].layer, kv[0]))
+
+    def __len__(self) -> int:
+        return len(self._instructions)
+
+    def __iter__(self) -> Iterator[Instruction]:
+        return iter(self._instructions)
+
+    def __getitem__(self, i: int) -> Instruction:
+        return self._instructions[i]
+
+    @property
+    def num_qubits(self) -> int:
+        return self.n_qubits
+
+    @property
+    def depth(self) -> int:
+        """Number of layers (``max layer + 1``), ignoring barriers."""
+        layers = [i.layer for i in self._instructions if not isinstance(i, Barrier)]
+        return max(layers) + 1 if layers else 0
+
+    def layers(self) -> list[list[tuple[int, Instruction]]]:
+        """Instructions grouped by layer: ``layers()[t]`` = ``[(index, inst), ...]``."""
+        out: list[list[tuple[int, Instruction]]] = [[] for _ in range(self.depth)]
+        for idx, inst in self.ordered():
+            if not isinstance(inst, Barrier):
+                out[inst.layer].append((idx, inst))
+        return out
+
+    def count_ops(self) -> dict[str, int]:
+        """Count instructions by name, e.g. ``{"H": 1, "CX": 2, "MEASURE": 3}``."""
+        return dict(Counter(i.name for i in self._instructions if not isinstance(i, Barrier)))
+
+    @property
+    def has_measurements(self) -> bool:
+        return any(isinstance(i, Measure) for i in self._instructions)
+
+    @property
+    def has_conditionals(self) -> bool:
+        return any(isinstance(i, Operation) and i.condition is not None for i in self._instructions)
+
+    def is_clifford(self) -> bool:
+        """True if every gate is a Clifford gate (measurements/resets allowed)."""
+        return all(op.gate.is_clifford for op in self.operations)
+
+    # =========================================================== validation
+    def _check_qubits(self, qubits: Sequence[int], what: str) -> tuple[int, ...]:
+        qs = tuple(int(q) for q in qubits)
+        for q in qs:
+            if not 0 <= q < self.n_qubits:
+                raise ValueError(f"{what}: qubit {q} is out of range for a {self.n_qubits}-qubit circuit.")
+        if len(set(qs)) != len(qs):
+            raise ValueError(f"{what}: qubits {list(qs)} contain duplicates.")
+        return qs
+
+    def _check_clbit(self, c: int, what: str) -> int:
+        c = int(c)
+        if not 0 <= c < self.n_clbits:
+            raise ValueError(f"{what}: classical bit {c} does not exist (circuit has {self.n_clbits}).")
+        return c
+
+    def _place(self, qubits: tuple[int, ...], layer: int | None, min_layer: int, what: str) -> int:
+        if layer is None:
+            layer = max([self._frontier[q] for q in qubits] + [min_layer])
+        else:
+            layer = int(layer)
+            if layer < 0:
+                raise ValueError(f"{what}: layer must be >= 0.")
+            clash = [q for q in qubits if (layer, q) in self._occupied]
+            if clash:
+                raise ValueError(f"{what}: qubit(s) {clash} already busy in layer {layer}.")
+        for q in qubits:
+            self._occupied.add((layer, q))
+            self._frontier[q] = max(self._frontier[q], layer + 1)
+        return layer
+
+    def _normalize_condition(self, condition: ConditionArg) -> Condition | None:
+        if condition is None or isinstance(condition, Condition):
+            cond = condition
+        elif isinstance(condition, (int, np.integer)):
+            cond = Condition((int(condition),), 1)
+        elif isinstance(condition, ClassicalRegister):
+            cond = Condition(condition.clbits, 1)
+        elif isinstance(condition, tuple) and len(condition) == 2:
+            bits, value = condition
+            if isinstance(bits, ClassicalRegister):
+                bits = bits.clbits
+            elif isinstance(bits, (int, np.integer)):
+                bits = (int(bits),)
+            cond = Condition(tuple(bits), int(value))
+        else:
+            raise TypeError(f"Cannot interpret condition {condition!r}.")
+        if cond is not None:
+            for c in cond.clbits:
+                self._check_clbit(c, "condition")
+        return cond
+
+    # ============================================================ builders
+    def append(
         self,
-        gate: gates.Gate,
-        qubits: Qubits | List[int],
-        t: Optional[int] = None,
+        gate: Gate,
+        qubits: QubitArg,
         *,
-        params: Optional[Dict[str, Any]] = None,
-        meta: Optional[Dict[str, Any]] = None,
-    ):
-        """
-        Adds a gate operation to the circuit.
+        layer: int | None = None,
+        condition: ConditionArg = None,
+        tag: str | None = None,
+    ) -> Circuit:
+        """Append ``gate`` on ``qubits``.
 
         Args:
-            gate:   The gate to add (e.g., gates.H, gates.IDLE).
-            qubits: The qubit(s) the gate acts on.
-            t:      Optional explicit time step (layer index).  When omitted,
-                    the gate is auto-scheduled into the earliest available slot
-                    where none of its qubits conflict with an existing operation.
-                    When provided, the gate is placed at exactly that t — but
-                    a ValueError is raised if any qubit is already occupied at
-                    that t by another gate.
-            params: Optional per-op parameters. For IDLE: {"duration_ns": float}.
-            meta:   Optional per-op metadata (free-form).
-
-        Raises:
-            ValueError: If the number of qubits provided does not match the
-                        gate's definition, if any qubit index is out of bounds,
-                        or if any qubit is already in use at the requested t.
+            gate: Any :class:`Gate` (library or custom).
+            qubits: Target qubits, in the gate's matrix order.
+            layer: Explicit layer; default schedules as early as possible.
+            condition: Classical condition: a clbit index, ``(clbits, value)``,
+                a :class:`ClassicalRegister`, or a :class:`Condition`.
+            tag: Free-form label (usable in noise rules).
         """
-        if isinstance(qubits, list):
-            qubits = tuple(qubits)
-
-        if len(qubits) != gate.num_qubits:
-            raise ValueError(
-                f"Gate '{gate.name}' acts on {gate.num_qubits} qubit(s), "
-                f"but was applied to {len(qubits)}."
-            )
-
-        for q in qubits:
-            if not 0 <= q < self.n_qubits:
-                raise ValueError(
-                    f"Qubit index {q} is out of bounds for a circuit with "
-                    f"{self.n_qubits} qubits."
-                )
-
-        if t is None:
-            # Greedy scheduling: earliest slot where all required qubits are free.
-            # _get_qubits() handles all CircuitOp variants (Operation, Measurement,
-            # ConditionalOp) so Measurement ops on the same qubit are respected.
-            qubit_last_t: Dict[int, int] = {}
-            for op in self.operations:
-                for q in _get_qubits(op):
-                    if op.t > qubit_last_t.get(q, -1):
-                        qubit_last_t[q] = op.t
-            t = max((qubit_last_t.get(q, -1) for q in qubits), default=-1) + 1
-
-        # Qubit-collision check: no two gates at the same t may share a qubit.
-        new_qubits = set(qubits)
-        for existing in self.operations:
-            if existing.t == t:
-                conflict = new_qubits & set(_get_qubits(existing))
-                if conflict:
-                    existing_desc = (
-                        existing.gate.name
-                        if isinstance(existing, Operation)
-                        else type(existing).__name__
-                    )
-                    raise ValueError(
-                        f"Cannot place '{gate.name}' on qubit(s) {sorted(qubits)} at t={t}: "
-                        f"qubit(s) {sorted(conflict)} already used by "
-                        f"'{existing_desc}' on {list(_get_qubits(existing))} at t={t}."
-                    )
-
-        op = Operation(gate=gate, qubits=qubits, t=t, params=params, meta=meta)
-        self.operations.append(op)
+        if not isinstance(gate, Gate):
+            raise TypeError(f"Expected a Gate, got {type(gate).__name__}.")
+        qs = self._check_qubits(_as_qubit_list(qubits), f"Gate '{gate.name}'")
+        if len(qs) != gate.num_qubits:
+            raise ValueError(f"Gate '{gate.name}' acts on {gate.num_qubits} qubit(s) but got {len(qs)}: {list(qs)}.")
+        cond = self._normalize_condition(condition)
+        min_layer = max((self._clbit_ready.get(c, 0) for c in cond.clbits), default=0) if cond else 0
+        lay = self._place(qs, layer, min_layer, f"Gate '{gate.name}'")
+        self._instructions.append(Operation(gate, qs, lay, cond, tag))
         return self
 
-    # ------------------------------------------------------------------
-    # Fluent builder methods — each returns self for chaining, e.g.:
-    #   Circuit(3).h(0).cnot(0, 1).cnot(1, 2)
-    # Single-qubit gates accept an optional t= to pin the layer.
-    # ------------------------------------------------------------------
+    def _single(self, gate: Gate, qubits: QubitArg, layer, condition) -> Circuit:
+        for q in _as_qubit_list(qubits):
+            self.append(gate, [q], layer=layer, condition=condition)
+        return self
 
-    def h(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.H, (qubit,), t=t)
+    # --- single-qubit fixed gates
+    def i(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        """Identity gate (occupies a layer; picks up gate noise if modelled)."""
+        return self._single(G.I, q, layer, condition)
 
-    def x(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.X, (qubit,), t=t)
+    def x(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.X, q, layer, condition)
 
-    def y(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.Y, (qubit,), t=t)
+    def y(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.Y, q, layer, condition)
 
-    def z(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.Z, (qubit,), t=t)
+    def z(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.Z, q, layer, condition)
 
-    def s(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.S, (qubit,), t=t)
+    def h(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.H, q, layer, condition)
 
-    def s_dag(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.S_DAG, (qubit,), t=t)
+    def s(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.S, q, layer, condition)
 
-    def tgate(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        """T gate — named tgate to avoid collision with the t= layer parameter."""
-        return self.add_gate(gates.T, (qubit,), t=t)
+    def sdg(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.SDG, q, layer, condition)
 
-    def t_dag(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.T_DAG, (qubit,), t=t)
+    def t(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        """T gate (π/8 gate)."""
+        return self._single(G.T, q, layer, condition)
 
-    def identity(self, qubit: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.I, (qubit,), t=t)
+    def tdg(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.TDG, q, layer, condition)
 
-    def idle(self, qubit: int, duration_ns: float, t: Optional[int] = None) -> "Circuit":
-        """Insert an IDLE gate lasting duration_ns on qubit.
+    def sx(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.SX, q, layer, condition)
 
-        IDLE represents a qubit sitting idle while something else runs on
-        another qubit. Only T1/T2 decoherence accrues — no gate error.
-        duration_ns is required because it drives the noise model.
-        """
-        return self.add_gate(
-            gates.IDLE,
-            (qubit,),
-            t=t,
-            params={"duration_ns": float(duration_ns)},
-        )
+    def sxdg(self, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.SXDG, q, layer, condition)
 
-    def cnot(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CNOT, (control, target), t=t)
+    # --- single-qubit parametric gates
+    def rx(self, theta: float, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.rx(theta), q, layer, condition)
 
-    def cx(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CNOT, (control, target), t=t)
+    def ry(self, theta: float, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.ry(theta), q, layer, condition)
 
-    def cz(self, q1: int, q2: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CZ, (q1, q2), t=t)
+    def rz(self, theta: float, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.rz(theta), q, layer, condition)
 
-    def swap(self, q1: int, q2: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.SWAP, (q1, q2), t=t)
+    def p(self, theta: float, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.p(theta), q, layer, condition)
 
-    def cs(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CS, (control, target), t=t)
+    def u(self, theta: float, phi: float, lam: float, q: QubitArg, *, layer=None, condition=None) -> Circuit:
+        return self._single(G.u(theta, phi, lam), q, layer, condition)
 
-    def cs_dag(self, control: int, target: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CS_DAG, (control, target), t=t)
+    # --- multi-qubit gates
+    def cx(self, control: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.CX, [control, target], layer=layer, condition=condition)
 
-    def ccz(self, q1: int, q2: int, q3: int, t: Optional[int] = None) -> "Circuit":
-        return self.add_gate(gates.CCZ, (q1, q2, q3), t=t)
+    cnot = cx
 
-    def p(self, qubit: int, theta: float, t: Optional[int] = None) -> "Circuit":
-        """Phase gate P(θ) = [[1, 0], [0, e^{iθ}]]."""
-        return self.add_gate(gates.phase_gate(theta), (qubit,), t=t)
+    def cy(self, control: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.CY, [control, target], layer=layer, condition=condition)
 
-    def rz(self, qubit: int, theta: float, t: Optional[int] = None) -> "Circuit":
-        """Rotation-Z gate RZ(θ) = [[e^{-iθ/2}, 0], [0, e^{iθ/2}]]."""
-        return self.add_gate(gates.rz_gate(theta), (qubit,), t=t)
+    def cz(self, q0: int, q1: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.CZ, [q0, q1], layer=layer, condition=condition)
 
-    def ry(
-        self,
-        qubit: int,
-        theta: float,
-        t: Optional[int] = None,
-        *,
-        meta: Optional[Dict[str, Any]] = None,
-    ) -> "Circuit":
-        """Rotation-Y gate RY(θ) = [[cos(θ/2), -sin(θ/2)], [sin(θ/2), cos(θ/2)]].
+    def ch(self, control: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.CH, [control, target], layer=layer, condition=condition)
 
-        Accepts an optional `meta` dict for tagging resource sites (e.g. MEK |H>
-        preparation sites) without affecting circuit execution.
-        """
-        return self.add_gate(gates.ry_gate(theta), (qubit,), t=t, meta=meta)
+    def swap(self, q0: int, q1: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.SWAP, [q0, q1], layer=layer, condition=condition)
 
-    ## Removes name and metadata from printing if they're None, to reduce clutter
-    def __repr__(self) -> str:
-        parts = [f"n_qubits={self.n_qubits!r}", f"operations={self.operations!r}"]
-        if self.name is not None:
-            parts.append(f"name={self.name!r}")
-        if self.metadata is not None:
-            parts.append(f"metadata={self.metadata!r}")
-        return f"Circuit({', '.join(parts)})"
+    def iswap(self, q0: int, q1: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.ISWAP, [q0, q1], layer=layer, condition=condition)
 
-    ## Validates the circuit for basic sanity checks, like non-negative time and valid qubit indices.
-    def validate(self) -> None:
-        """Basic safety checks so we catch mistakes early."""
-        if self.n_qubits <= 0:
-            raise ValueError("n_qubits must be > 0")
+    def cp(self, theta: float, control: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.cp(theta), [control, target], layer=layer, condition=condition)
 
-        valid_cbit_indices = {
-            reg.offset + i
-            for reg in self.classical_registers
-            for i in range(reg.size)
-        }
+    def crx(self, theta: float, control: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.crx(theta), [control, target], layer=layer, condition=condition)
 
-        for op in self.operations:
-            if isinstance(op, Operation):
-                if op.t < 0:
-                    raise ValueError(f"Operation time t must be >= 0: {op}")
-                for q in op.qubits:
-                    if not (0 <= q < self.n_qubits):
-                        raise ValueError(f"Qubit index out of range: {q} for {op}")
-            elif isinstance(op, Measurement):
-                if op.t < 0:
-                    raise ValueError(f"Measurement time t must be >= 0: {op}")
-                if not (0 <= op.qubit < self.n_qubits):
-                    raise ValueError(
-                        f"Measurement qubit index out of range: {op.qubit} for {op}"
-                    )
-                if op.cbit.index not in valid_cbit_indices:
-                    raise ValueError(
-                        f"Measurement.cbit '{op.cbit.name}' (index {op.cbit.index}) "
-                        f"is not allocated by this circuit."
-                    )
-            elif isinstance(op, ConditionalOp):
-                if op.t < 0:
-                    raise ValueError(f"ConditionalOp time t must be >= 0: {op}")
-                for q in op.qubits:
-                    if not (0 <= q < self.n_qubits):
-                        raise ValueError(
-                            f"Qubit index out of range: {q} for {op}"
-                        )
-                if op.condition.index not in valid_cbit_indices:
-                    raise ValueError(
-                        f"ConditionalOp.condition '{op.condition.name}' "
-                        f"(index {op.condition.index}) is not allocated by this circuit."
-                    )
+    def cry(self, theta: float, control: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.cry(theta), [control, target], layer=layer, condition=condition)
 
-    # ------------------------------------------------------------------
-    # Classical-register management
-    # ------------------------------------------------------------------
+    def crz(self, theta: float, control: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.crz(theta), [control, target], layer=layer, condition=condition)
 
-    def add_classical_register(self, name: str, size: int) -> ClassicalRegister:
-        """Allocate a named classical register on this circuit.
+    def ccx(self, c0: int, c1: int, target: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.CCX, [c0, c1, target], layer=layer, condition=condition)
 
-        Returns the new ``ClassicalRegister`` so callers can index into it::
+    toffoli = ccx
 
-            syndrome = circuit.add_classical_register("syndrome", 2)
-            circuit.measure(0, syndrome[0])
+    def ccz(self, q0: int, q1: int, q2: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.CCZ, [q0, q1, q2], layer=layer, condition=condition)
 
-        Args:
-            name: Register name (must be unique within this circuit).
-            size: Number of bits (must be >= 1).
+    def cswap(self, control: int, q0: int, q1: int, *, layer=None, condition=None) -> Circuit:
+        return self.append(G.CSWAP, [control, q0, q1], layer=layer, condition=condition)
 
-        Raises:
-            ValueError: If *name* is already used by another register, or
-                        if *size* is less than 1.
-        """
+    def mcx(self, controls: Sequence[int], target: int, *, layer=None, condition=None) -> Circuit:
+        """Multi-controlled X (any number of controls)."""
+        controls = list(controls)
+        gate = G.X if not controls else G.controlled(G.X, len(controls))
+        return self.append(gate, controls + [target], layer=layer, condition=condition)
+
+    def mcz(self, controls: Sequence[int], target: int, *, layer=None, condition=None) -> Circuit:
+        """Multi-controlled Z (any number of controls)."""
+        controls = list(controls)
+        gate = G.Z if not controls else G.controlled(G.Z, len(controls))
+        return self.append(gate, controls + [target], layer=layer, condition=condition)
+
+    def unitary(self, matrix: np.ndarray, qubits: QubitArg, name: str = "U", *, layer=None, condition=None) -> Circuit:
+        """Apply an arbitrary unitary matrix (big-endian in ``qubits`` order)."""
+        return self.append(G.unitary(matrix, name), qubits, layer=layer, condition=condition)
+
+    # ============================================================ classical
+    def add_register(self, name: str, size: int) -> ClassicalRegister:
+        """Allocate ``size`` new classical bits as a named register."""
         if size < 1:
-            raise ValueError(
-                f"Classical register size must be >= 1; got {size}."
-            )
-        for existing in self.classical_registers:
-            if existing.name == name:
-                raise ValueError(
-                    f"Classical register '{name}' already exists on this circuit."
-                )
-        offset = sum(r.size for r in self.classical_registers)
-        reg = ClassicalRegister(name=name, size=size, offset=offset)
-        self.classical_registers.append(reg)
+            raise ValueError("Register size must be >= 1.")
+        if any(r.name == name for r in self.registers):
+            raise ValueError(f"Register '{name}' already exists.")
+        reg = ClassicalRegister(name, self.n_clbits, size)
+        self.n_clbits += size
+        self.registers.append(reg)
         return reg
+
+    def _new_clbit(self) -> int:
+        self.n_clbits += 1
+        return self.n_clbits - 1
 
     def measure(
         self,
-        qubit: int,
-        cbit: ClassicalBit,
+        qubit: QubitArg,
+        clbit: Union[int, Sequence[int]] | None = None,
         *,
+        basis: str = "Z",
         reset: bool = False,
-        t: Optional[int] = None,
-    ) -> "Circuit":
-        """Append a Z-basis measurement of *qubit* writing the outcome into *cbit*.
+        layer: int | None = None,
+    ) -> Circuit:
+        """Measure qubit(s) in ``basis`` ("X", "Y" or "Z").
 
-        Scheduling follows the same greedy rule as ``add_gate``: when *t* is
-        omitted the measurement is placed at ``max_t_on_qubit + 1``.
-
-        Args:
-            qubit: Qubit to measure (must be in range).
-            cbit:  Destination classical bit (must be allocated via
-                   ``add_classical_register``).
-            reset: When ``True``, reset the qubit to |0⟩ after measurement.
-            t:     Optional explicit time-step.  When provided, a ValueError is
-                   raised if *qubit* is already occupied at that time-step.
-
-        Returns:
-            ``self`` for chaining.
-
-        Raises:
-            ValueError: If *qubit* is out of bounds, *cbit* is not allocated
-                        by this circuit, or an explicit *t* collides with an
-                        existing operation on *qubit*.
+        If ``clbit`` is omitted a fresh classical bit is allocated per qubit.
+        With ``reset=True`` the qubit is reset to |0⟩ after the measurement.
         """
-        if not (0 <= qubit < self.n_qubits):
-            raise ValueError(
-                f"Qubit index {qubit} is out of bounds for a circuit with "
-                f"{self.n_qubits} qubits."
-            )
-
-        if self.classical_registers:
-            valid_cbit_indices = {
-                reg.offset + i
-                for reg in self.classical_registers
-                for i in range(reg.size)
-            }
-            if cbit.index not in valid_cbit_indices:
-                raise ValueError(
-                    f"ClassicalBit at index {cbit.index} ('{cbit.name}') is not "
-                    f"allocated by this circuit. Use add_classical_register() first."
-                )
-
-        if t is None:
-            last_t = -1
-            for op in self.operations:
-                if qubit in _get_qubits(op) and op.t > last_t:
-                    last_t = op.t
-            t = last_t + 1
+        qs = _as_qubit_list(qubit)
+        if clbit is None:
+            cs = [self._new_clbit() for _ in qs]
         else:
-            # Explicit t: collision check mirrors add_gate().
-            for existing in self.operations:
-                if existing.t == t and qubit in set(_get_qubits(existing)):
-                    existing_desc = (
-                        existing.gate.name
-                        if isinstance(existing, Operation)
-                        else type(existing).__name__
-                    )
-                    raise ValueError(
-                        f"Cannot place Measurement on qubit {qubit} at t={t}: "
-                        f"qubit {qubit} already used by '{existing_desc}' at t={t}."
-                    )
-
-        self.operations.append(Measurement(qubit=qubit, cbit=cbit, t=t, reset=reset))
+            cs = _as_qubit_list(clbit)
+            if len(cs) != len(qs):
+                raise ValueError("measure: number of qubits and clbits differ.")
+        for q, c in zip(qs, cs):
+            (q,) = self._check_qubits([q], "measure")
+            c = self._check_clbit(c, "measure")
+            lay = self._place((q,), layer, 0, "measure")
+            self._instructions.append(Measure(q, c, lay, basis, reset))
+            self._clbit_ready[c] = max(self._clbit_ready.get(c, 0), lay + 1)
         return self
 
-    def c_if(
-        self,
-        cbit: ClassicalBit,
-        value: int = 1,
-    ) -> "_ConditionalBuilder":
-        """Return a builder that wraps the next gate in a ``ConditionalOp``.
+    def measure_all(self, basis: str = "Z", *, barrier: bool = True) -> Circuit:
+        """Measure every qubit into fresh classical bits (clbit k ↔ qubit k when the circuit had none)."""
+        if barrier:
+            self.barrier()
+        return self.measure(range(self.n_qubits), basis=basis)
 
-        Usage::
+    def reset(self, qubit: QubitArg, *, layer: int | None = None) -> Circuit:
+        """Reset qubit(s) to |0⟩."""
+        for q in _as_qubit_list(qubit):
+            (q,) = self._check_qubits([q], "reset")
+            lay = self._place((q,), layer, 0, "reset")
+            self._instructions.append(Reset(q, lay))
+        return self
 
-            circuit.c_if(syndrome[0], value=1).x(target)
-            circuit.c_if(syndrome[1]).cnot(0, 1)
+    def delay(self, qubit: QubitArg, duration: float, *, layer: int | None = None) -> Circuit:
+        """Let qubit(s) idle for ``duration`` seconds (one layer)."""
+        for q in _as_qubit_list(qubit):
+            (q,) = self._check_qubits([q], "delay")
+            lay = self._place((q,), layer, 0, "delay")
+            self._instructions.append(Delay(q, float(duration), lay))
+        return self
 
-        Args:
-            cbit:  Classical bit to check.
-            value: Required value (0 or 1) for the gate to fire.
+    def barrier(self, *qubits: QubitArg) -> Circuit:
+        """Align the given qubits (default: all) so later gates start together."""
+        qs: list[int] = []
+        for q in qubits:
+            qs.extend(_as_qubit_list(q))
+        qs = list(self._check_qubits(qs or range(self.n_qubits), "barrier"))
+        lay = max(self._frontier[q] for q in qs)
+        for q in qs:
+            self._frontier[q] = lay
+        self._instructions.append(Barrier(tuple(qs), lay))
+        return self
+
+    def c_if(self, clbits: Union[int, Sequence[int], ClassicalRegister], value: int = 1) -> _Conditioned:
+        """Condition the next gate on classical bits.
+
+        Example:
+            ``c.c_if(0).x(2)`` applies X to qubit 2 if clbit 0 is 1;
+            ``c.c_if([0, 1], 0b10).z(2)`` fires when clbit 0 = 0 and clbit 1 = 1.
         """
-        return _ConditionalBuilder(self, cbit, value)
+        if isinstance(clbits, ClassicalRegister):
+            bits = clbits.clbits
+        else:
+            bits = tuple(_as_qubit_list(clbits))
+        cond = Condition(bits, value)
+        self._normalize_condition(cond)
+        return _Conditioned(self, cond)
 
+    # ============================================================ transforms
+    def copy(self, name: str | None = None) -> Circuit:
+        """Deep copy (instructions are immutable, so this is cheap)."""
+        new = Circuit(self.n_qubits, self.n_clbits, name if name is not None else self.name)
+        new.registers = list(self.registers)
+        new._instructions = list(self._instructions)
+        new._frontier = list(self._frontier)
+        new._clbit_ready = dict(self._clbit_ready)
+        new._occupied = set(self._occupied)
+        return new
 
-class _ConditionalBuilder:
-    """Fluent helper returned by ``Circuit.c_if()``.
+    def _append_instruction(self, inst: Instruction, qmap, cmap, keep_layers: bool, offset: int = 0) -> None:
+        layer = inst.layer + offset if keep_layers else None
+        if isinstance(inst, Operation):
+            cond = None
+            if inst.condition is not None:
+                cond = Condition(tuple(cmap[c] for c in inst.condition.clbits), inst.condition.value)
+            self.append(inst.gate, [qmap[q] for q in inst.qubits], layer=layer, condition=cond, tag=inst.tag)
+        elif isinstance(inst, Measure):
+            self.measure(qmap[inst.qubit], cmap[inst.clbit], basis=inst.basis, reset=inst.reset, layer=layer)
+        elif isinstance(inst, Reset):
+            self.reset(qmap[inst.qubit], layer=layer)
+        elif isinstance(inst, Delay):
+            self.delay(qmap[inst.qubit], inst.duration, layer=layer)
+        elif isinstance(inst, Barrier):
+            self.barrier([qmap[q] for q in inst.qubits])
 
-    Each method wraps the corresponding gate in a ``ConditionalOp`` and
-    appends it to the parent circuit, returning the circuit for chaining::
-
-        circuit.c_if(syndrome[0]).x(target)   # X fires only when bit=1
-        circuit.c_if(anc, 0).z(0)             # Z fires only when bit=0
-
-    Scheduling mirrors ``Circuit.add_gate``: the wrapped gate lands at
-    ``max_t_across_target_qubits + 1`` when no explicit ``t`` is given.
-    """
-
-    def __init__(
+    def compose(
         self,
-        circuit: Circuit,
-        condition: ClassicalBit,
-        value: int = 1,
-    ) -> None:
+        other: Circuit,
+        qubits: Sequence[int] | None = None,
+        clbits: Sequence[int] | None = None,
+    ) -> Circuit:
+        """Append ``other`` (in place). ``qubits[k]`` is where other's qubit k goes."""
+        qmap = list(qubits) if qubits is not None else list(range(other.n_qubits))
+        if len(qmap) != other.n_qubits:
+            raise ValueError("compose: qubit map must have one entry per qubit of the other circuit.")
+        if clbits is None:
+            while self.n_clbits < other.n_clbits:
+                self._new_clbit()
+            cmap = list(range(other.n_clbits))
+        else:
+            cmap = list(clbits)
+        for _, inst in other.ordered():
+            self._append_instruction(inst, qmap, cmap, keep_layers=False)
+        return self
+
+    def __add__(self, other: Circuit) -> Circuit:
+        if other.n_qubits != self.n_qubits:
+            raise ValueError("Can only add circuits with the same number of qubits.")
+        return self.copy().compose(other)
+
+    def inverse(self) -> Circuit:
+        """Return the inverse circuit ``U†`` (gates reversed and inverted).
+
+        Raises:
+            ValueError: If the circuit contains measurements, resets or conditionals.
+        """
+        new = Circuit(self.n_qubits, self.n_clbits, f"{self.name}_inv" if self.name else None)
+        for _, inst in reversed(self.ordered()):
+            if isinstance(inst, Operation):
+                if inst.condition is not None:
+                    raise ValueError("Cannot invert a circuit with classically-conditioned gates.")
+                new.append(inst.gate.inverse(), inst.qubits, tag=inst.tag)
+            elif isinstance(inst, (Measure, Reset)):
+                raise ValueError("Cannot invert a circuit containing measurements or resets.")
+            elif isinstance(inst, Delay):
+                new.delay(inst.qubit, inst.duration)
+            elif isinstance(inst, Barrier):
+                new.barrier(list(inst.qubits))
+        return new
+
+    def repeat(self, n: int) -> Circuit:
+        """Return the circuit repeated ``n`` times."""
+        out = Circuit(self.n_qubits, 0, self.name)
+        for _ in range(n):
+            out.compose(self, clbits=None)
+        return out
+
+    def without_measurements(self) -> Circuit:
+        """Copy with all measurements and barriers removed (gates keep their order)."""
+        new = Circuit(self.n_qubits, self.n_clbits, self.name)
+        for _, inst in self.ordered():
+            if not isinstance(inst, (Measure, Barrier)):
+                new._append_instruction(inst, list(range(self.n_qubits)), list(range(self.n_clbits)), False)
+        return new
+
+    # ================================================================ misc
+    def draw(self, **kwargs):
+        """Draw the circuit with matplotlib (see :func:`noisiq.visualization.draw_circuit`)."""
+        from ..visualization import draw_circuit
+
+        return draw_circuit(self, **kwargs)
+
+    def to_qasm(self) -> str:
+        """Export to OpenQASM 2.0 (see :func:`noisiq.io.to_qasm`)."""
+        from ..io.qasm import to_qasm
+
+        return to_qasm(self)
+
+    @classmethod
+    def from_qasm(cls, source: str) -> Circuit:
+        """Parse OpenQASM 2.0 source (see :func:`noisiq.io.from_qasm`)."""
+        from ..io.qasm import from_qasm
+
+        return from_qasm(source)
+
+    def __repr__(self) -> str:
+        name = f"{self.name!r}, " if self.name else ""
+        return (
+            f"Circuit({name}n_qubits={self.n_qubits}, n_clbits={self.n_clbits}, "
+            f"instructions={len(self)}, depth={self.depth})"
+        )
+
+    def __str__(self) -> str:
+        lines = [repr(self)]
+        for idx, inst in self.ordered():
+            lines.append(f"  [{idx:>3}] {inst!r}")
+        return "\n".join(lines)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Circuit):
+            return NotImplemented
+        return (
+            self.n_qubits == other.n_qubits
+            and self.n_clbits == other.n_clbits
+            and self._instructions == other._instructions
+        )
+
+    __hash__ = None  # mutable
+
+
+class _Conditioned:
+    """Proxy returned by :meth:`Circuit.c_if`; forwards one gate call with a condition."""
+
+    _GATE_METHODS = {
+        "i",
+        "x",
+        "y",
+        "z",
+        "h",
+        "s",
+        "sdg",
+        "t",
+        "tdg",
+        "sx",
+        "sxdg",
+        "rx",
+        "ry",
+        "rz",
+        "p",
+        "u",
+        "cx",
+        "cnot",
+        "cy",
+        "cz",
+        "ch",
+        "swap",
+        "iswap",
+        "cp",
+        "crx",
+        "cry",
+        "crz",
+        "ccx",
+        "toffoli",
+        "ccz",
+        "cswap",
+        "mcx",
+        "mcz",
+        "unitary",
+        "append",
+    }
+
+    def __init__(self, circuit: Circuit, condition: Condition):
         self._circuit = circuit
         self._condition = condition
-        self._value = value
 
-    def _add(
-        self,
-        gate: gates.Gate,
-        qubits: Qubits,
-        t: Optional[int] = None,
-        *,
-        params: Optional[Dict[str, Any]] = None,
-        meta: Optional[Dict[str, Any]] = None,
-    ) -> Circuit:
-        """Build ``ConditionalOp(Operation(...))`` and append to circuit."""
-        if isinstance(qubits, list):
-            qubits = tuple(qubits)
+    def __getattr__(self, name: str):
+        if name not in self._GATE_METHODS:
+            raise AttributeError(f"c_if(...) can only wrap gate methods, not '{name}'.")
+        method = getattr(self._circuit, name)
 
-        if len(qubits) != gate.num_qubits:
-            raise ValueError(
-                f"Gate '{gate.name}' acts on {gate.num_qubits} qubit(s), "
-                f"but was applied to {len(qubits)}."
-            )
-        for q in qubits:
-            if not 0 <= q < self._circuit.n_qubits:
-                raise ValueError(
-                    f"Qubit index {q} is out of bounds for a circuit with "
-                    f"{self._circuit.n_qubits} qubits."
-                )
+        def call(*args, **kwargs):
+            kwargs["condition"] = self._condition
+            return method(*args, **kwargs)
 
-        # Condition cbit must be allocated by the circuit.
-        if self._circuit.classical_registers:
-            valid_cbit_indices = {
-                reg.offset + i
-                for reg in self._circuit.classical_registers
-                for i in range(reg.size)
-            }
-            if self._condition.index not in valid_cbit_indices:
-                raise ValueError(
-                    f"Condition ClassicalBit at index {self._condition.index} "
-                    f"('{self._condition.name}') is not allocated by this circuit. "
-                    f"Use add_classical_register() first."
-                )
-
-        if t is None:
-            qubit_last_t: Dict[int, int] = {}
-            for op in self._circuit.operations:
-                for q in _get_qubits(op):
-                    if op.t > qubit_last_t.get(q, -1):
-                        qubit_last_t[q] = op.t
-            latest_qubit_t = max((qubit_last_t.get(q, -1) for q in qubits), default=-1)
-            # Ensure the conditional fires after the measurement that sets the condition bit.
-            latest_cbit_write_t = -1
-            for op in self._circuit.operations:
-                if isinstance(op, Measurement) and op.cbit.index == self._condition.index:
-                    if op.t > latest_cbit_write_t:
-                        latest_cbit_write_t = op.t
-            t = max(latest_qubit_t, latest_cbit_write_t) + 1
-        else:
-            # Explicit t: collision check mirrors add_gate().
-            new_qubits = set(qubits)
-            for existing in self._circuit.operations:
-                if existing.t == t:
-                    conflict = new_qubits & set(_get_qubits(existing))
-                    if conflict:
-                        existing_desc = (
-                            existing.gate.name
-                            if isinstance(existing, Operation)
-                            else type(existing).__name__
-                        )
-                        raise ValueError(
-                            f"Cannot place conditional '{gate.name}' on qubit(s) "
-                            f"{sorted(qubits)} at t={t}: qubit(s) {sorted(conflict)} "
-                            f"already used by '{existing_desc}' at t={t}."
-                        )
-
-        inner = Operation(gate=gate, qubits=qubits, t=t, params=params, meta=meta)
-        cond = ConditionalOp(inner=inner, condition=self._condition, value=self._value)
-        self._circuit.operations.append(cond)
-        return self._circuit
-
-    # Mirrors the single-qubit fluent methods on Circuit.
-    def h(self, qubit: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.H, (qubit,), t)
-
-    def x(self, qubit: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.X, (qubit,), t)
-
-    def y(self, qubit: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.Y, (qubit,), t)
-
-    def z(self, qubit: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.Z, (qubit,), t)
-
-    def s(self, qubit: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.S, (qubit,), t)
-
-    def cnot(self, control: int, target: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.CNOT, (control, target), t)
-
-    def cx(self, control: int, target: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.CNOT, (control, target), t)
-
-    def cz(self, q1: int, q2: int, t: Optional[int] = None) -> Circuit:
-        return self._add(gates.CZ, (q1, q2), t)
-
+        return call

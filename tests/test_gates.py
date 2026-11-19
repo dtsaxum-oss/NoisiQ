@@ -1,130 +1,150 @@
 import numpy as np
 import pytest
+import stim
 
-from noisiq.ir import gates
+from noisiq.ir import gates as G
+from tests.conftest import random_unitary
 
-
-def test_gate_creation_unitary():
-    """Tests that a Gate can be created with a valid unitary matrix."""
-    h_matrix = (1 / np.sqrt(2)) * np.array([[1, 1], [1, -1]])
-    gate = gates.Gate(name="H_test", matrix=h_matrix, num_qubits=1)
-    assert gate.name == "H_test"
-    assert gate.num_qubits == 1
-    assert np.allclose(gate.matrix, h_matrix)
+ALL_FIXED = list(G.STANDARD_GATES.values())
+PARAMETRIC = [G.rx, G.ry, G.rz, G.p, G.cp, G.crx, G.cry, G.crz]
 
 
-def test_gate_creation_non_unitary_fails():
-    """Tests that creating a Gate with a non-unitary matrix raises a ValueError."""
-    non_unitary_matrix = np.array([[1, 2], [3, 4]])
-    with pytest.raises(ValueError, match="matrix is not unitary"):
-        gates.Gate(name="NonUnitary", matrix=non_unitary_matrix, num_qubits=1)
+@pytest.mark.parametrize("gate", ALL_FIXED, ids=lambda g: g.name)
+def test_fixed_gates_are_unitary_and_sized(gate):
+    d = 2**gate.num_qubits
+    assert gate.matrix.shape == (d, d)
+    assert np.allclose(gate.matrix.conj().T @ gate.matrix, np.eye(d))
 
 
-def test_gate_creation_non_square_matrix_fails():
-    """Tests that creating a Gate with a non-square matrix fails the unitarity check."""
-    non_square_matrix = np.array([[1, 0, 0], [0, 1, 0]])
-    with pytest.raises(ValueError, match="matrix is not unitary"):
-        gates.Gate(name="NonSquare", matrix=non_square_matrix, num_qubits=1)
+@pytest.mark.parametrize("gate", ALL_FIXED, ids=lambda g: g.name)
+def test_inverse_is_inverse(gate):
+    assert np.allclose(gate.inverse().matrix @ gate.matrix, np.eye(gate.matrix.shape[0]))
 
 
-@pytest.mark.parametrize(
-    "gate_instance, expected_name, expected_qubits, expected_shape",
-    [
-        (gates.I, "I", 1, (2, 2)),
-        (gates.X, "X", 1, (2, 2)),
-        (gates.Y, "Y", 1, (2, 2)),
-        (gates.Z, "Z", 1, (2, 2)),
-        (gates.H, "H", 1, (2, 2)),
-        (gates.S, "S", 1, (2, 2)),
-        (gates.S_DAG, "S_DAG", 1, (2, 2)),
-        (gates.T, "T", 1, (2, 2)),
-        (gates.T_DAG, "T_DAG", 1, (2, 2)),
-        (gates.CNOT, "CNOT", 2, (4, 4)),
-    ],
-)
-def test_standard_gates_are_valid(
-    gate_instance, expected_name, expected_qubits, expected_shape
-):
-    """
-    Tests that all standard gate definitions are valid Gates with correct properties.
-    The Gate's __post_init__ already confirms unitarity.
-    """
-    assert isinstance(gate_instance, gates.Gate)
-    assert gate_instance.name == expected_name
-    assert gate_instance.num_qubits == expected_qubits
-    assert gate_instance.matrix.shape == expected_shape
+@pytest.mark.parametrize("factory", PARAMETRIC, ids=lambda f: f.__name__)
+@pytest.mark.parametrize("theta", [0.0, 0.123456789, np.pi / 3, -2.5])
+def test_parametric_gates_keep_exact_angle(factory, theta):
+    g = factory(theta)
+    assert g.params == (theta,)  # exact, never rounded
+    assert np.allclose(g.inverse().matrix @ g.matrix, np.eye(g.matrix.shape[0]))
 
 
-def test_is_unitary_helper():
-    """Tests the internal is_unitary helper function."""
-    # Unitary
-    assert gates.is_unitary(gates.H.matrix)
-    assert gates.is_unitary(gates.CNOT.matrix)
+def test_u_gate_inverse_and_special_cases():
+    g = G.u(0.3, 1.1, -0.7)
+    assert np.allclose(g.inverse().matrix @ g.matrix, np.eye(2))
+    assert np.allclose(G.u(np.pi / 2, 0, np.pi).matrix, G.H.matrix)
 
-    # Non-unitary
-    assert not gates.is_unitary(np.array([[1, 1], [1, 1]]))
-    assert not gates.is_unitary(np.array([[1, 0], [0, 2]]))
 
-    # Non-square
-    assert not gates.is_unitary(np.array([[1, 0, 0], [0, 1, 0]]))
+def test_rotation_identities():
+    assert np.allclose(G.p(np.pi / 2).matrix, G.S.matrix)
+    assert np.allclose(G.p(np.pi / 4).matrix, G.T.matrix)
+    assert np.allclose(G.rx(np.pi).matrix, -1j * G.X.matrix)
+    assert np.allclose(G.SX.matrix @ G.SX.matrix, G.X.matrix)
 
 
 @pytest.mark.parametrize(
-    "gate_instance, expected_name, expected_qubits, expected_shape",
+    "gate,expected",
     [
-        (gates.SWAP,   "SWAP",   2, (4, 4)),
-        (gates.CS,     "CS",     2, (4, 4)),
-        (gates.CS_DAG, "CS_DAG", 2, (4, 4)),
-        (gates.CCZ,    "CCZ",    3, (8, 8)),
+        (G.H, True),
+        (G.S, True),
+        (G.SX, True),
+        (G.CX, True),
+        (G.CZ, True),
+        (G.SWAP, True),
+        (G.ISWAP, True),
+        (G.T, False),
+        (G.CCX, False),
+        (G.CH, False),
+        (G.rz(0.3), False),
+        (G.rz(np.pi / 2), True),
+        (G.rx(np.pi), True),
+        (G.p(np.pi), True),
     ],
 )
-def test_new_gates_are_valid(gate_instance, expected_name, expected_qubits, expected_shape):
-    assert isinstance(gate_instance, gates.Gate)
-    assert gate_instance.name == expected_name
-    assert gate_instance.num_qubits == expected_qubits
-    assert gate_instance.matrix.shape == expected_shape
+def test_clifford_detection_from_matrix(gate, expected):
+    assert gate.is_clifford is expected
 
 
-def test_swap_matrix_correct():
-    # SWAP|01⟩ = |10⟩ (MSB-first: index 01=1 → index 10=2)
-    psi_01 = np.array([0, 1, 0, 0], dtype=complex)
-    psi_10 = gates.SWAP.matrix @ psi_01
-    assert np.allclose(psi_10, [0, 0, 1, 0])
+def test_custom_clifford_gate_is_recognized_regardless_of_name():
+    m = stim.Tableau.random(2).to_unitary_matrix(endian="big")
+    g = G.unitary(m, name="H")  # misleading name must not matter
+    assert g.is_clifford
+    assert g.symplectic.shape == (4, 4)
 
 
-def test_cs_matrix_phase():
-    # CS|11⟩ = i|11⟩  (|11⟩ is index 3 in MSB-first ordering)
-    psi_11 = np.array([0, 0, 0, 1], dtype=complex)
-    result = gates.CS.matrix @ psi_11
-    assert np.allclose(result, [0, 0, 0, 1j])
+@pytest.mark.parametrize("gate", [G.X, G.Y, G.Z, G.I])
+def test_pauli_detection(gate):
+    assert gate.is_pauli
+    assert not G.H.is_pauli
 
 
-def test_cs_cs_dag_inverse():
-    assert np.allclose(gates.CS.matrix @ gates.CS_DAG.matrix, np.eye(4))
+def test_symplectic_matches_conjugation(rng):
+    # For every Clifford, M @ bits(P) must equal bits(U P U†) for all Paulis P.
+    from noisiq.noise.channels import pauli_matrix
+
+    for gate in [g for g in ALL_FIXED if g.is_clifford]:
+        k = gate.num_qubits
+        U = gate.matrix
+        for label in ["".join(t) for t in np.array(np.meshgrid(*[list("IXYZ")] * k)).T.reshape(-1, k)]:
+            P = pauli_matrix(label)
+            out = U @ P @ U.conj().T
+            bits = np.array([c in "XY" for c in label] + [c in "ZY" for c in label], dtype=np.uint8)
+            new = (gate.symplectic @ bits) & 1
+            lab = "".join(
+                {(0, 0): "I", (1, 0): "X", (1, 1): "Y", (0, 1): "Z"}[(int(new[j]), int(new[k + j]))] for j in range(k)
+            )
+            Q = pauli_matrix(lab)
+            phase = np.trace(Q.conj().T @ out) / 2**k
+            assert np.isclose(abs(phase), 1.0), (gate.name, label)
 
 
-def test_ccz_matrix_phase():
-    # CCZ|111⟩ = -|111⟩  (|111⟩ is index 7)
-    psi_111 = np.array([0, 0, 0, 0, 0, 0, 0, 1], dtype=complex)
-    result = gates.CCZ.matrix @ psi_111
-    assert np.allclose(result, [0, 0, 0, 0, 0, 0, 0, -1])
+def test_controlled_gate_structure():
+    g = G.controlled(G.H)
+    assert g.num_controls == 1 and g.base == G.H
+    assert np.allclose(g.matrix[:2, :2], np.eye(2))
+    assert np.allclose(g.matrix[2:, 2:], G.H.matrix)
+    gg = G.controlled(G.X, 3)
+    assert gg.num_qubits == 4 and gg.num_controls == 3
 
 
-def test_phase_gate_factory():
-    gate = gates.phase_gate(np.pi / 2)
-    assert gate.name == "P(1.571)"
-    assert gate.num_qubits == 1
-    # P(π/2)|1⟩ = i|1⟩
-    psi_1 = np.array([0, 1], dtype=complex)
-    assert np.allclose(gate.matrix @ psi_1, [0, 1j])
+def test_non_unitary_and_bad_shapes_rejected():
+    with pytest.raises(ValueError):
+        G.Gate("BAD", np.array([[1, 1], [0, 1]]))
+    with pytest.raises(ValueError):
+        G.Gate("BAD", np.eye(3))
+    with pytest.raises(ValueError):
+        G.Gate("BAD", np.eye(2, 3))
 
 
-def test_rz_gate_factory():
-    gate = gates.rz_gate(np.pi)
-    assert gate.name == "RZ(3.142)"
-    assert gate.num_qubits == 1
-    # RZ(π) = -i * Z  (up to global phase); |RZ(π)| diag = [e^{-iπ/2}, e^{iπ/2}] = [-i, i]
-    expected = np.array([[-1j, 0], [0, 1j]], dtype=complex)
-    assert np.allclose(gate.matrix, expected)
+def test_gate_equality_and_hash():
+    assert G.rz(0.5) == G.rz(0.5)
+    assert G.rz(0.5) != G.rz(0.6)
+    assert hash(G.rz(0.5)) == hash(G.rz(0.5))
+    assert G.X != G.Z
 
 
+def test_matrix_is_read_only():
+    with pytest.raises(ValueError):
+        G.H.matrix[0, 0] = 2
+
+
+def test_gate_from_name_and_aliases():
+    assert G.gate_from_name("cnot") == G.CX
+    assert G.gate_from_name("u1", [0.3]) == G.p(0.3)
+    with pytest.raises(KeyError):
+        G.gate_from_name("nope")
+    with pytest.raises(ValueError):
+        G.gate_from_name("h", [1.0])
+
+
+def test_display_labels():
+    assert G.rz(np.pi / 4).display_label == "RZ(π/4)"
+    assert G.SDG.display_label == "S†"
+    assert G.p(-np.pi / 2).display_label == "P(-π/2)"
+
+
+def test_random_custom_unitary_inverse(rng):
+    g = G.unitary(random_unitary(4, rng), "U4")
+    assert not g.is_clifford
+    assert np.allclose(g.inverse().matrix @ g.matrix, np.eye(4))
+    assert g.inverse().inverse() == g

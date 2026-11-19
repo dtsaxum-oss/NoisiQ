@@ -1,65 +1,45 @@
-"""
-Visualization tools for NoisiQ.
+"""Visualization: circuit diagrams, error heatmaps, propagation animations, charts.
+
+Every circuit picture is drawn by :func:`draw_circuit` from a :class:`CircuitLayout`;
+change colors and sizes globally with :func:`set_style`.
 """
 
-from .circuit_diagram import draw_circuit
-from .drawer import draw_circuit_with_labels, add_metric_box
-from .widgets import Visualizer
-from .animation import CircuitAnimator
-from .export import export_gif, export_html
-from .gate_info import GateInfoExtractor
-from .theme import (
-    apply_global_style,
-    gate_color,
-    get_halo_colormap,
-    halo_color,
-)
-from . import charts
-from .charts import plot_error_heatmap, plot_qubit_error_bar, plot_fidelity_decay, plot_hardware_comparison, interactive_heatmap
-from .density_matrix import (
+from .charts import (
+    plot_bloch,
+    plot_comparison,
+    plot_counts,
     plot_density_matrix,
-    plot_purity_decay,
-    state_fidelity,
-    density_matrix_state_fidelity,
-    global_purity,
+    plot_error_budget,
+    plot_hardware_comparison,
+    plot_qubit_errors,
 )
-from .purity_overlay import (
-    per_qubit_purity,
-    per_qubit_purities,
-    annotate_axes_with_purities,
-    add_purity_panel,
-    single_qubit_marginal_purity,
-    single_qubit_marginal_purities,
-)
+from .circuit import CircuitDrawing, draw_circuit, gate_category
+from .heatmap import heat_values, plot_error_heatmap
+from .layout import CircuitLayout, instruction_label
+from .propagation import animate_propagation, interactive_propagation, plot_propagation, save_animation
+from .style import PAULI_COLORS, Style, get_style, set_style
 
 __all__ = [
     "draw_circuit",
-    "draw_circuit_with_labels",
-    "add_metric_box",
-    "Visualizer",
-    "CircuitAnimator",
-    "export_gif",
-    "export_html",
-    "GateInfoExtractor",
-    "apply_global_style",
-    "gate_color",
-    "get_halo_colormap",
-    "halo_color",
-    "charts",
+    "CircuitDrawing",
+    "CircuitLayout",
+    "instruction_label",
+    "gate_category",
     "plot_error_heatmap",
-    "interactive_heatmap",
-    "plot_qubit_error_bar",
-    "plot_fidelity_decay",
-    "plot_hardware_comparison",
+    "heat_values",
+    "plot_propagation",
+    "animate_propagation",
+    "save_animation",
+    "interactive_propagation",
+    "plot_error_budget",
+    "plot_qubit_errors",
+    "plot_counts",
+    "plot_comparison",
     "plot_density_matrix",
-    "plot_purity_decay",
-    "state_fidelity",
-    "density_matrix_state_fidelity",
-    "global_purity",
-    "per_qubit_purity",
-    "per_qubit_purities",
-    "annotate_axes_with_purities",
-    "add_purity_panel",
-    "single_qubit_marginal_purity",
-    "single_qubit_marginal_purities",
+    "plot_bloch",
+    "plot_hardware_comparison",
+    "Style",
+    "get_style",
+    "set_style",
+    "PAULI_COLORS",
 ]

@@ -1,437 +1,450 @@
-"""
-OpenQASM 2.0 parser for importing circuits into the NoisiQ IR.
+"""OpenQASM 2.0 import and export.
 
-Supported statements:
-  - qreg declarations           (one or more named registers)
-  - creg declarations           (classical registers; wired to ClassicalRegister)
-  - Single-qubit gates          h, x, y, z, s, sdg, t, tdg, id
-  - Two-qubit gates             cx, cnot, cz, swap, cs
-  - Three-qubit gates           ccz
-  - measure q[i] -> c[j]        parsed into Measurement ops
-  - if (creg==val) gate q[k]    parsed into ConditionalOp (single-bit cregs only)
-  - barrier                     silently ignored
-  - include / OPENQASM header   silently ignored
-  - Line comments               // ...
+Import supports: multiple ``qreg``/``creg``, all ``qelib1.inc`` gates (plus ``sx``,
+``sxdg``, ``p``, ``cp``, ``rzz``, ``rxx``), parameter expressions (``pi/4``, ``-2*pi/3``,
+``sin(...)``...), register broadcasting (``h q;``, ``measure q -> c;``), ``reset``,
+``barrier``, ``if (creg == n) <op>;`` and user ``gate`` definitions (expanded inline).
 
-Unsupported (raises QASMParseError):
-  - reset                       raises QASMParseError (not yet implemented)
-  - Custom gate definitions     gate ...
-  - Parameterized gates         rx(theta), ry(theta), rz(theta) etc.
-  - if with multi-bit creg comparison  (only 1-bit cond registers in M5)
+Export writes one ``creg`` per user register (``Circuit.add_register``) and one 1-bit
+``creg`` per remaining classical bit, so single-bit conditions survive the round trip.
+X/Y-basis measurements are written as basis rotations around a Z measurement.
 """
 
 from __future__ import annotations
 
+import ast
+import math
+import operator
 import re
-from typing import Dict, List, Tuple
 
-from ..ir import Circuit
-from ..ir import gates as ir_gates
-from ..ir.classical import ClassicalBit, ClassicalRegister, Measurement, ConditionalOp
-from ..ir.circuit import Operation, _get_qubits
+import numpy as np
+
+from ..ir import gates as G
+from ..ir.circuit import Circuit
+from ..ir.gates import Gate
+from ..ir.instructions import Barrier, Condition, Delay, Measure, Operation, Reset
+
+__all__ = ["from_qasm", "to_qasm", "QASMParseError", "QASMExportError"]
 
 
 class QASMParseError(ValueError):
-    """Raised when a QASM string cannot be parsed into a NoisiQ Circuit."""
+    """The QASM source could not be parsed."""
 
 
-# ---------------------------------------------------------------------------
-# Gate name → NoisiQ Gate mapping
-# ---------------------------------------------------------------------------
+class QASMExportError(ValueError):
+    """The circuit cannot be expressed in OpenQASM 2.0."""
 
-_GATE_MAP: Dict[str, object] = {
-    "h":    ir_gates.H,
-    "x":    ir_gates.X,
-    "y":    ir_gates.Y,
-    "z":    ir_gates.Z,
-    "s":    ir_gates.S,
-    "sdg":  ir_gates.S_DAG,
-    "t":    ir_gates.T,
-    "tdg":  ir_gates.T_DAG,
-    "id":   ir_gates.I,
-    "i":    ir_gates.I,
-    "cx":   ir_gates.CNOT,
-    "cnot": ir_gates.CNOT,
-    "cz":   ir_gates.CZ,
-    "swap": ir_gates.SWAP,
-    "cs":   ir_gates.CS,
-    "ccz":  ir_gates.CCZ,
+
+# ============================================================================
+# expression evaluation
+# ============================================================================
+
+_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Pow: operator.pow,
+}
+_FUNCS = {
+    "sin": math.sin,
+    "cos": math.cos,
+    "tan": math.tan,
+    "exp": math.exp,
+    "ln": math.log,
+    "sqrt": math.sqrt,
+    "asin": math.asin,
+    "acos": math.acos,
+    "atan": math.atan,
 }
 
-# Statements that are legal but carry no information for the IR
-_IGNORED_KEYWORDS = frozenset({
-    "openqasm", "include", "barrier",
-})
 
-# Regex for a qubit/cbit reference: regname[index]
-_QUBIT_REF = re.compile(r"(\w+)\[(\d+)\]")
+def _eval(expr: str, env: dict[str, float] | None = None) -> float:
+    env = {"pi": math.pi, **(env or {})}
+    expr = expr.strip().replace("^", "**")
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as e:
+        raise QASMParseError(f"Bad parameter expression {expr!r}.") from e
 
-# Regex for a register declaration: qreg/creg name[size]
-_REG_DECL = re.compile(r"(?:qreg|creg)\s+(\w+)\[(\d+)\]", re.IGNORECASE)
+    def ev(node):
+        if isinstance(node, ast.Expression):
+            return ev(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return float(node.value)
+        if isinstance(node, ast.Name):
+            if node.id in env:
+                return float(env[node.id])
+            raise QASMParseError(f"Unknown identifier {node.id!r} in {expr!r}.")
+        if isinstance(node, ast.BinOp) and type(node.op) in _BINOPS:
+            return _BINOPS[type(node.op)](ev(node.left), ev(node.right))
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+            v = ev(node.operand)
+            return -v if isinstance(node.op, ast.USub) else v
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in _FUNCS:
+            return _FUNCS[node.func.id](*[ev(a) for a in node.args])
+        raise QASMParseError(f"Unsupported expression {expr!r}.")
 
-# Regex for a measure statement: measure qreg[i] -> creg[j]
-_MEASURE_RE = re.compile(
-    r"measure\s+(\w+)\[(\d+)\]\s*->\s*(\w+)\[(\d+)\]",
-    re.IGNORECASE,
-)
-
-# Regex for an if statement: if (creg==value) rest
-_IF_RE = re.compile(
-    r"if\s*\(\s*(\w+)\s*==\s*(\d+)\s*\)\s*(.+)",
-    re.IGNORECASE,
-)
+    return ev(tree)
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+def _split_args(s: str) -> list[str]:
+    out, depth, cur = [], 0, ""
+    for ch in s:
+        if ch == "," and depth == 0:
+            out.append(cur.strip())
+            cur = ""
+            continue
+        depth += ch == "("
+        depth -= ch == ")"
+        cur += ch
+    if cur.strip():
+        out.append(cur.strip())
+    return out
 
-def from_qasm(qasm_str: str) -> Circuit:
-    """Parse an OpenQASM 2.0 string and return a NoisiQ Circuit.
 
-    Classical register declarations (``creg``) are added to
-    ``circuit.classical_registers``.  ``measure`` statements produce
-    ``Measurement`` operations.  Single-bit ``if`` conditions produce
-    ``ConditionalOp`` operations.
+# ============================================================================
+# gate table
+# ============================================================================
 
-    Args:
-        qasm_str: A valid OpenQASM 2.0 program as a plain string.
 
-    Returns:
-        Circuit with gates, measurements, and conditional ops in source order.
+def _rzz(t):
+    return Gate("RZZ", np.diag(np.exp(-0.5j * t * np.array([1, -1, -1, 1]))), (t,))
+
+
+def _rxx(t):
+    c, s = math.cos(t / 2), math.sin(t / 2)
+    m = np.array([[c, 0, 0, -1j * s], [0, c, -1j * s, 0], [0, -1j * s, c, 0], [-1j * s, 0, 0, c]])
+    return Gate("RXX", m, (t,))
+
+
+def _cu3(theta, phi, lam):
+    g = G.controlled(G.u(theta, phi, lam))
+    return Gate("CU3", g.matrix, (theta, phi, lam), None, 1, G.u(theta, phi, lam))
+
+
+_BUILTIN: dict[str, tuple[int, object]] = {
+    # name: (n_params, factory or Gate)
+    "id": (0, G.I),
+    "x": (0, G.X),
+    "y": (0, G.Y),
+    "z": (0, G.Z),
+    "h": (0, G.H),
+    "s": (0, G.S),
+    "sdg": (0, G.SDG),
+    "t": (0, G.T),
+    "tdg": (0, G.TDG),
+    "sx": (0, G.SX),
+    "sxdg": (0, G.SXDG),
+    "cx": (0, G.CX),
+    "CX": (0, G.CX),
+    "cy": (0, G.CY),
+    "cz": (0, G.CZ),
+    "ch": (0, G.CH),
+    "swap": (0, G.SWAP),
+    "ccx": (0, G.CCX),
+    "cswap": (0, G.CSWAP),
+    "iswap": (0, G.ISWAP),
+    "ccz": (0, G.CCZ),
+    "rx": (1, G.rx),
+    "ry": (1, G.ry),
+    "rz": (1, G.rz),
+    "p": (1, G.p),
+    "u1": (1, G.p),
+    "phase": (1, G.p),
+    "cp": (1, G.cp),
+    "cu1": (1, G.cp),
+    "cphase": (1, G.cp),
+    "crx": (1, G.crx),
+    "cry": (1, G.cry),
+    "crz": (1, G.crz),
+    "rzz": (1, _rzz),
+    "rxx": (1, _rxx),
+    "u2": (2, lambda phi, lam: G.u(math.pi / 2, phi, lam)),
+    "u3": (3, G.u),
+    "u": (3, G.u),
+    "U": (3, G.u),
+    "cu3": (3, _cu3),
+}
+
+
+# ============================================================================
+# import
+# ============================================================================
+
+_GATE_DEF = re.compile(r"gate\s+(\w+)\s*(?:\(([^)]*)\))?\s*([^{]*)\{([^}]*)\}", re.S)
+_REG = re.compile(r"^(qreg|creg)\s+(\w+)\s*\[\s*(\d+)\s*\]$")
+_REF = re.compile(r"^(\w+)\s*(?:\[\s*(\d+)\s*\])?$")
+_IF = re.compile(r"^if\s*\(\s*(\w+)\s*==\s*(\d+)\s*\)\s*(.+)$", re.S)
+_CALL = re.compile(r"^([A-Za-z_]\w*)\s*(?:\((.*)\))?\s+(.+)$", re.S)
+
+
+def from_qasm(source: str) -> Circuit:
+    """Parse an OpenQASM 2.0 program into a :class:`~noisiq.Circuit`.
 
     Raises:
-        QASMParseError: If the source contains unsupported statements or
-                        references an undeclared register.
-
-    Example:
-        >>> qasm = '''
-        ... OPENQASM 2.0;
-        ... qreg q[2];
-        ... creg c[2];
-        ... h q[0];
-        ... cx q[0], q[1];
-        ... measure q[0] -> c[0];
-        ... measure q[1] -> c[1];
-        ... '''
-        >>> circuit = from_qasm(qasm)
-        >>> circuit.n_qubits
-        2
+        QASMParseError: On unsupported or malformed statements (with the statement text).
     """
-    lines = _strip_comments(qasm_str)
-    statements = _split_statements(lines)
+    src = re.sub(r"//[^\n]*", "", source)
+    src = re.sub(r"/\*.*?\*/", "", src, flags=re.S)
+    macros: dict[str, tuple[list[str], list[str], str]] = {}
+    for m in _GATE_DEF.finditer(src):
+        name, params, args, body = m.group(1), m.group(2) or "", m.group(3), m.group(4)
+        macros[name] = (
+            [p.strip() for p in params.split(",") if p.strip()],
+            [a.strip() for a in args.split(",") if a.strip()],
+            body,
+        )
+    src = _GATE_DEF.sub("", src)
+    statements = [s.strip() for s in src.split(";") if s.strip()]
 
-    # -----------------------------------------------------------------------
-    # First pass: collect qreg and creg declarations
-    # -----------------------------------------------------------------------
-    qregs: Dict[str, Tuple[int, int]] = {}  # reg_name → (offset, size)
-    cregs: Dict[str, ClassicalRegister] = {}  # reg_name → ClassicalRegister
-    total_qubits = 0
-    total_cbits = 0
+    qregs: dict[str, tuple[int, int]] = {}
+    cregs: dict[str, tuple[int, int]] = {}
+    nq = nc = 0
+    for st in statements:
+        m = _REG.match(st)
+        if m:
+            kind, name, size = m.group(1), m.group(2), int(m.group(3))
+            if name in qregs or name in cregs:
+                raise QASMParseError(f"Register '{name}' declared twice.")
+            if kind == "qreg":
+                qregs[name] = (nq, size)
+                nq += size
+            else:
+                cregs[name] = (nc, size)
+                nc += size
+    if nq == 0:
+        raise QASMParseError("No qreg declared.")
+    circuit = Circuit(nq)
+    for name, (off, size) in cregs.items():
+        reg = circuit.add_register(name, size)
+        assert reg.offset == off
 
-    for stmt in statements:
-        tokens = stmt.split()
-        if not tokens:
+    def refs(token: str, regs, what) -> list[int]:
+        m = _REF.match(token.strip())
+        if not m or m.group(1) not in regs:
+            raise QASMParseError(f"Unknown {what} '{token}'.")
+        off, size = regs[m.group(1)]
+        if m.group(2) is None:
+            return list(range(off, off + size))
+        i = int(m.group(2))
+        if i >= size:
+            raise QASMParseError(f"Index {i} out of range for {what} '{m.group(1)}[{size}]'.")
+        return [off + i]
+
+    def apply_gate(name: str, params: list[float], qubit_lists: list[list[int]], cond, stmt: str) -> None:
+        widths = {len(x) for x in qubit_lists if len(x) > 1}
+        if len(widths) > 1:
+            raise QASMParseError(f"Register size mismatch in '{stmt}'.")
+        reps = widths.pop() if widths else 1
+        for r in range(reps):
+            qs = [x[r] if len(x) > 1 else x[0] for x in qubit_lists]
+            if name in macros:
+                pnames, anames, body = macros[name]
+                if len(pnames) != len(params) or len(anames) != len(qs):
+                    raise QASMParseError(f"Wrong number of arguments for gate '{name}' in '{stmt}'.")
+                env = dict(zip(pnames, params))
+                amap = dict(zip(anames, qs))
+                for sub in [b.strip() for b in body.split(";") if b.strip()]:
+                    run_call(sub, cond, env, amap)
+                continue
+            if name not in _BUILTIN:
+                raise QASMParseError(f"Unsupported gate '{name}' in '{stmt}'.")
+            npar, fac = _BUILTIN[name]
+            if len(params) != npar:
+                raise QASMParseError(f"Gate '{name}' expects {npar} parameter(s) in '{stmt}'.")
+            gate = fac(*params) if npar else fac
+            try:
+                circuit.append(gate, qs, condition=cond)
+            except ValueError as e:
+                raise QASMParseError(f"{e} (in '{stmt}')") from e
+
+    def run_call(stmt: str, cond, env=None, amap=None) -> None:
+        if stmt.startswith("barrier"):
+            if amap is None:
+                args = _split_args(stmt[len("barrier") :])
+                qs = [q for a in args for q in refs(a, qregs, "qubit register")]
+                circuit.barrier(qs)
+            return
+        m = _CALL.match(stmt)
+        if not m:
+            raise QASMParseError(f"Cannot parse statement '{stmt}'.")
+        name, ptxt, atxt = m.group(1), m.group(2), m.group(3)
+        params = [_eval(p, env) for p in _split_args(ptxt)] if ptxt else []
+        args = _split_args(atxt)
+        if amap is not None:
+            qlists = [[amap[a]] if a in amap else _fail(f"Unknown argument '{a}' in gate body") for a in args]
+        else:
+            qlists = [refs(a, qregs, "qubit register") for a in args]
+        apply_gate(name, params, qlists, cond, stmt)
+
+    for st in statements:
+        head = st.split()[0]
+        if head in ("OPENQASM", "include") or _REG.match(st):
             continue
-        keyword = tokens[0].lower()
-
-        if keyword == "qreg":
-            reg_name, size = _parse_reg_decl(stmt, "qreg")
-            if reg_name in qregs:
-                raise QASMParseError(
-                    f"Duplicate qreg declaration for '{reg_name}'."
-                )
-            qregs[reg_name] = (total_qubits, size)
-            total_qubits += size
-
-        elif keyword == "creg":
-            reg_name, size = _parse_reg_decl(stmt, "creg")
-            if reg_name in cregs:
-                raise QASMParseError(
-                    f"Duplicate creg declaration for '{reg_name}'."
-                )
-            cregs[reg_name] = ClassicalRegister(
-                name=reg_name, size=size, offset=total_cbits
-            )
-            total_cbits += size
-
-    if total_qubits == 0:
-        raise QASMParseError("No qreg declaration found — cannot build a Circuit.")
-
-    circuit = Circuit(n_qubits=total_qubits)
-
-    # Register classical registers on the circuit in declaration order.
-    for reg in cregs.values():
-        circuit.classical_registers.append(reg)
-
-    # -----------------------------------------------------------------------
-    # Second pass: apply gates, measurements, and conditionals in order
-    # -----------------------------------------------------------------------
-    for stmt in statements:
-        tokens = stmt.split()
-        if not tokens:
-            continue
-        keyword = tokens[0].lower()
-
-        if keyword in _IGNORED_KEYWORDS or keyword in ("qreg", "creg"):
-            continue
-
-        # ------------------------------------------------------------------
-        # reset q[i] — not yet supported; fail loudly rather than silently
-        # dropping the operation (which would produce wrong circuit semantics)
-        # ------------------------------------------------------------------
-        if keyword == "reset":
-            raise QASMParseError(
-                "'reset' is not yet supported by NoisiQ. "
-                "Remove or replace 'reset' statements before parsing."
-            )
-
-        # ------------------------------------------------------------------
-        # measure q[i] -> c[j]
-        # ------------------------------------------------------------------
-        if keyword == "measure":
-            _apply_measure(stmt, circuit, qregs, cregs)
-            continue
-
-        # ------------------------------------------------------------------
-        # if (creg==val) gate q[k]
-        # ------------------------------------------------------------------
-        if keyword == "if":
-            _apply_if(stmt, circuit, qregs, cregs)
-            continue
-
-        # ------------------------------------------------------------------
-        # Parameterized gate call e.g. rx(pi/2) — not supported
-        # ------------------------------------------------------------------
-        if "(" in keyword:
-            gate_base = keyword.split("(")[0]
-            if gate_base not in _GATE_MAP:
-                raise QASMParseError(
-                    f"Parameterized gate '{keyword}' is not supported. "
-                    f"NoisiQ currently supports fixed single- and two-qubit gates only."
-                )
-
-        if keyword not in _GATE_MAP:
-            if keyword == "gate":
-                raise QASMParseError(
-                    f"Custom gate definitions ('gate ...') are not supported. "
-                    f"Decompose the gate into primitive operations before importing."
-                )
-            raise QASMParseError(
-                f"Unsupported gate or statement: '{keyword}'. "
-                f"Supported gates: {sorted(_GATE_MAP)}."
-            )
-
-        gate = _GATE_MAP[keyword]
-        qubit_args = _parse_qubit_args(stmt, keyword)
-        global_qubits = _resolve_qubits(qubit_args, qregs, stmt)
-
-        expected = gate.num_qubits
-        if len(global_qubits) != expected:
-            raise QASMParseError(
-                f"Gate '{keyword}' expects {expected} qubit(s), "
-                f"got {len(global_qubits)} in: '{stmt}'"
-            )
-
-        circuit.add_gate(gate, tuple(global_qubits))
-
+        cond = None
+        body = st
+        m = _IF.match(st)
+        if m:
+            reg, val = m.group(1), int(m.group(2))
+            if reg not in cregs:
+                raise QASMParseError(f"Unknown classical register '{reg}' in '{st}'.")
+            off, size = cregs[reg]
+            cond = Condition(tuple(range(off, off + size)), val)
+            body = m.group(3).strip()
+        head = body.split()[0].split("(")[0]
+        if head == "measure":
+            mm = re.match(r"measure\s+(.+?)\s*->\s*(.+)$", body)
+            if not mm or cond is not None:
+                raise QASMParseError(f"Unsupported measure statement '{st}'.")
+            qs = refs(mm.group(1), qregs, "qubit register")
+            cs = refs(mm.group(2), cregs, "classical register")
+            if len(qs) != len(cs):
+                raise QASMParseError(f"Size mismatch in '{st}'.")
+            circuit.measure(qs, cs)
+        elif head == "reset":
+            if cond is not None:
+                raise QASMParseError(f"Conditional reset is not supported: '{st}'.")
+            circuit.reset(refs(body.split(None, 1)[1], qregs, "qubit register"))
+        elif head == "opaque":
+            raise QASMParseError(f"Opaque gates are not supported: '{st}'.")
+        else:
+            run_call(body, cond)
     return circuit
 
 
-# ---------------------------------------------------------------------------
-# Measurement and conditional helpers
-# ---------------------------------------------------------------------------
-
-def _apply_measure(
-    stmt: str,
-    circuit: Circuit,
-    qregs: Dict[str, Tuple[int, int]],
-    cregs: Dict[str, ClassicalRegister],
-) -> None:
-    """Parse 'measure q[i] -> c[j]' and append a Measurement to circuit."""
-    m = _MEASURE_RE.search(stmt)
-    if not m:
-        raise QASMParseError(f"Malformed measure statement: '{stmt}'")
-
-    qreg_name, q_local = m.group(1), int(m.group(2))
-    creg_name, c_local = m.group(3), int(m.group(4))
-
-    if qreg_name not in qregs:
-        raise QASMParseError(
-            f"Qubit register '{qreg_name}' used in measure statement "
-            f"was not declared with qreg."
-        )
-    if creg_name not in cregs:
-        raise QASMParseError(
-            f"Classical register '{creg_name}' used in measure statement "
-            f"was not declared with creg."
-        )
-
-    qreg_offset, qreg_size = qregs[qreg_name]
-    if q_local >= qreg_size:
-        raise QASMParseError(
-            f"Qubit index {q_local} is out of range for register "
-            f"'{qreg_name}' (size {qreg_size}) in: '{stmt}'"
-        )
-    global_qubit = qreg_offset + q_local
-
-    creg = cregs[creg_name]
-    if not 0 <= c_local < creg.size:
-        raise QASMParseError(
-            f"Classical bit index {c_local} out of range for "
-            f"register '{creg_name}' (size {creg.size})."
-        )
-
-    cbit = creg[c_local]
-    circuit.measure(global_qubit, cbit)
+def _fail(msg: str):
+    raise QASMParseError(msg)
 
 
-def _apply_if(
-    stmt: str,
-    circuit: Circuit,
-    qregs: Dict[str, Tuple[int, int]],
-    cregs: Dict[str, ClassicalRegister],
-) -> None:
-    """Parse 'if (creg==val) gate q[k]' and append a ConditionalOp to circuit."""
-    m = _IF_RE.match(stmt)
-    if not m:
-        raise QASMParseError(f"Malformed if statement: '{stmt}'")
+# ============================================================================
+# export
+# ============================================================================
 
-    creg_name = m.group(1)
-    value = int(m.group(2))
-    inner_stmt = m.group(3).strip()
-
-    if creg_name not in cregs:
-        raise QASMParseError(
-            f"Classical register '{creg_name}' used in if condition "
-            f"was not declared with creg."
-        )
-    creg = cregs[creg_name]
-
-    # For M5 we support only 1-bit registers (condition on a single bit).
-    if creg.size != 1:
-        raise QASMParseError(
-            f"if conditions on multi-bit registers are not yet supported "
-            f"(register '{creg_name}' has size {creg.size}). "
-            f"Use a 1-bit creg or decompose the comparison."
-        )
-    if value not in (0, 1):
-        raise QASMParseError(
-            f"if condition value must be 0 or 1 for a 1-bit register; "
-            f"got {value} for '{creg_name}'."
-        )
-
-    cbit = creg[0]
-
-    # Parse the inner gate statement.
-    inner_tokens = inner_stmt.split()
-    if not inner_tokens:
-        raise QASMParseError(f"Empty inner statement in: '{stmt}'")
-    inner_keyword = inner_tokens[0].lower()
-
-    if inner_keyword not in _GATE_MAP:
-        raise QASMParseError(
-            f"Gate '{inner_keyword}' inside if statement is not supported."
-        )
-
-    gate = _GATE_MAP[inner_keyword]
-    qubit_args = _parse_qubit_args(inner_stmt, inner_keyword)
-    global_qubits = _resolve_qubits(qubit_args, qregs, inner_stmt)
-
-    if len(global_qubits) != gate.num_qubits:
-        raise QASMParseError(
-            f"Gate '{inner_keyword}' expects {gate.num_qubits} qubit(s), "
-            f"got {len(global_qubits)} in if body: '{inner_stmt}'"
-        )
-
-    # Schedule: find the latest t across the target qubits.
-    qubit_last_t: Dict[int, int] = {}
-    for op in circuit.operations:
-        for q in _get_qubits(op):
-            if op.t > qubit_last_t.get(q, -1):
-                qubit_last_t[q] = op.t
-    t = max((qubit_last_t.get(q, -1) for q in global_qubits), default=-1) + 1
-
-    inner = Operation(gate=gate, qubits=tuple(global_qubits), t=t)
-    circuit.operations.append(ConditionalOp(inner=inner, condition=cbit, value=value))
+_EXPORT_NAMES = {
+    "I": "id",
+    "X": "x",
+    "Y": "y",
+    "Z": "z",
+    "H": "h",
+    "S": "s",
+    "SDG": "sdg",
+    "T": "t",
+    "TDG": "tdg",
+    "SX": "sx",
+    "SXDG": "sxdg",
+    "CX": "cx",
+    "CY": "cy",
+    "CZ": "cz",
+    "CH": "ch",
+    "SWAP": "swap",
+    "CCX": "ccx",
+    "CSWAP": "cswap",
+    "RX": "rx",
+    "RY": "ry",
+    "RZ": "rz",
+    "P": "u1",
+    "U": "u3",
+    "CP": "cu1",
+    "CRZ": "crz",
+    "CRX": "crx",
+    "CRY": "cry",
+    "RZZ": "rzz",
+    "RXX": "rxx",
+    "CU3": "cu3",
+}
 
 
-# ---------------------------------------------------------------------------
-# Internal helpers
-# ---------------------------------------------------------------------------
-
-def _strip_comments(qasm_str: str) -> str:
-    """Remove // line comments from the QASM source."""
-    lines = []
-    for line in qasm_str.splitlines():
-        if "//" in line:
-            line = line[:line.index("//")]
-        lines.append(line)
-    return "\n".join(lines)
+def _num(x: float) -> str:
+    for den in (1, 2, 3, 4, 6, 8, 16):
+        k = x * den / math.pi
+        if abs(k - round(k)) < 1e-12 and round(k) != 0:
+            k = int(round(k))
+            num = "pi" if abs(k) == 1 else f"{abs(k)}*pi"
+            s = ("-" if k < 0 else "") + num
+            return s if den == 1 else f"{s}/{den}"
+    return repr(float(x))
 
 
-def _split_statements(source: str) -> List[str]:
-    """Split source text into individual statements on ';' boundaries."""
-    return [s.strip() for s in source.split(";") if s.strip()]
-
-
-def _parse_reg_decl(stmt: str, kind: str) -> Tuple[str, int]:
-    """Parse 'qreg/creg name[size]' → (name, size).
+def to_qasm(circuit: Circuit) -> str:
+    """Export a circuit to OpenQASM 2.0 text.
 
     Raises:
-        QASMParseError: If the declaration is malformed or size < 1.
+        QASMExportError: For custom unitary gates, delays, or multi-bit conditions that do
+            not correspond to a whole register.
     """
-    m = re.search(rf"{kind}\s+(\w+)\[(\d+)\]", stmt, re.IGNORECASE)
-    if not m:
-        raise QASMParseError(f"Malformed {kind} declaration: '{stmt}'")
-    name, size = m.group(1), int(m.group(2))
-    if size < 1:
-        raise QASMParseError(
-            f"{kind} '{name}' has size {size}; register size must be >= 1."
-        )
-    return name, size
+    lines = ["OPENQASM 2.0;", 'include "qelib1.inc";', f"qreg q[{circuit.n_qubits}];"]
+    bitname: dict[int, str] = {}
+    reg_of: dict[tuple[int, ...], str] = {}
+    covered = set()
+    for reg in sorted(circuit.registers, key=lambda r: r.offset):
+        lines.append(f"creg {reg.name}[{reg.size}];")
+        reg_of[reg.clbits] = reg.name
+        for i, c in enumerate(reg):
+            bitname[c] = f"{reg.name}[{i}]"
+            covered.add(c)
+    used = {r.name for r in circuit.registers}
+    for c in range(circuit.n_clbits):
+        if c not in covered:
+            name = f"c{c}"
+            while name in used:
+                name = "_" + name
+            lines.append(f"creg {name}[1];")
+            bitname[c] = f"{name}[0]"
+            reg_of[(c,)] = name
 
-
-def _parse_qubit_args(stmt: str, gate_name: str) -> List[Tuple[str, int]]:
-    """Extract qubit references after the gate name.
-
-    Returns list of (register_name, index) tuples in argument order.
-
-    Raises:
-        QASMParseError: If no qubit references are found.
-    """
-    rest = stmt[len(gate_name):].strip()
-    refs = _QUBIT_REF.findall(rest)
-    if not refs:
-        raise QASMParseError(
-            f"No qubit references found in statement: '{stmt}'"
-        )
-    return [(name, int(idx)) for name, idx in refs]
-
-
-def _resolve_qubits(
-    qubit_args: List[Tuple[str, int]],
-    registers: Dict[str, Tuple[int, int]],
-    stmt: str,
-) -> List[int]:
-    """Convert (register_name, index) pairs to global qubit indices.
-
-    Raises:
-        QASMParseError: If a register name is undeclared or the local index
-                        exceeds the declared register size.
-    """
-    global_indices = []
-    for reg_name, local_idx in qubit_args:
-        if reg_name not in registers:
-            raise QASMParseError(
-                f"Qubit register '{reg_name}' used in '{stmt}' "
-                f"was not declared with qreg."
-            )
-        offset, size = registers[reg_name]
-        if local_idx >= size:
-            raise QASMParseError(
-                f"Qubit index {local_idx} is out of range for register "
-                f"'{reg_name}' (size {size}) in: '{stmt}'"
-            )
-        global_indices.append(offset + local_idx)
-    return global_indices
+    body: list[str] = []
+    for _, inst in circuit.ordered():
+        prefix = ""
+        if isinstance(inst, Operation) and inst.condition is not None:
+            key = inst.condition.clbits
+            if key not in reg_of:
+                raise QASMExportError(
+                    f"Condition on clbits {list(key)} is not a whole register; OpenQASM 2 cannot express it."
+                )
+            prefix = f"if({reg_of[key]}=={inst.condition.value}) "
+        if isinstance(inst, Operation):
+            g = inst.gate
+            if g.name == "ISWAP":  # = (S⊗S) H_a CX(a,b) CX(b,a) H_b, exact
+                a, b = inst.qubits
+                for line in (
+                    f"s q[{a}];",
+                    f"s q[{b}];",
+                    f"h q[{a}];",
+                    f"cx q[{a}],q[{b}];",
+                    f"cx q[{b}],q[{a}];",
+                    f"h q[{b}];",
+                ):
+                    body.append(prefix + line)
+                continue
+            if g.name not in _EXPORT_NAMES and g.name != "CCZ":
+                raise QASMExportError(f"Gate '{g.name}' has no OpenQASM 2 equivalent (custom unitary).")
+            qs = ",".join(f"q[{q}]" for q in inst.qubits)
+            if g.name == "CCZ":
+                a, b, c = inst.qubits
+                body.append(f"{prefix}h q[{c}];")
+                body.append(f"{prefix}ccx q[{a}],q[{b}],q[{c}];")
+                body.append(f"{prefix}h q[{c}];")
+                continue
+            params = f"({','.join(_num(p) for p in g.params)})" if g.params else ""
+            body.append(f"{prefix}{_EXPORT_NAMES[g.name]}{params} {qs};")
+        elif isinstance(inst, Measure):
+            q, c = inst.qubit, bitname[inst.clbit]
+            if inst.basis == "X":
+                body.append(f"h q[{q}];")
+            elif inst.basis == "Y":
+                body += [f"sdg q[{q}];", f"h q[{q}];"]
+            body.append(f"measure q[{q}] -> {c};")
+            if inst.reset:
+                body.append(f"reset q[{q}];")
+            elif inst.basis == "X":
+                body.append(f"h q[{q}];")
+            elif inst.basis == "Y":
+                body += [f"h q[{q}];", f"s q[{q}];"]
+        elif isinstance(inst, Reset):
+            body.append(f"reset q[{inst.qubit}];")
+        elif isinstance(inst, Barrier):
+            body.append("barrier " + ",".join(f"q[{q}]" for q in inst.qubits) + ";")
+        elif isinstance(inst, Delay):
+            raise QASMExportError("OpenQASM 2 has no delay instruction.")
+    return "\n".join(lines + body) + "\n"

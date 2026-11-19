@@ -1,170 +1,134 @@
 # NoisiQ
 
-**Noise-Aware Quantum Circuit Simulation and Visualization**
+**See where errors happen in a quantum circuit — and how they spread.**
 
-[![CI](https://github.com/<your-org>/noisiq/actions/workflows/ci.yml/badge.svg)](https://github.com/<your-org>/noisiq/actions)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/dtsaxum-oss/NoisiQ/actions/workflows/ci.yml/badge.svg)](https://github.com/dtsaxum-oss/NoisiQ/actions/workflows/ci.yml)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
+NoisiQ is an open-source Python library for **noise-aware simulation and visualization of
+quantum circuits**. Build (or import) any circuit, attach a noise model — from simple Pauli
+channels to T1/T2 decoherence, coherent over-rotations, readout errors and real-device
+profiles — then *look* at the result:
 
-NoisiQ is an open-source Python library that help's visualize quantum circuit noise. Users build or import a quantum circuit, attach selectable noise models, like simple Pauli channels and non-Pauli decoherence such as amplitude damping and dephasing. Then, observe how errors propagate through the circuit in real time.
+* **Error heatmaps** — which gates and idle periods contribute the most error, measured from simulation.
+* **Propagation animations** — follow a Pauli error layer by layer as gates copy and transform it.
+* **Error budgets, outcome comparisons, Bloch spheres** — quantitative summaries with uncertainties.
 
-NoisiQ is designed primarily as a **teaching resource** but also has some usefulness as a **research tool**. For small circuits, it will produce step-by-step propagation animations. For larger circuits, it emphasizes aggregated statistics and heatmaps where gate-level animation is not practical.
+It is designed first as a **teaching tool** and second as a lightweight **research aid**.
+Clifford circuits with Pauli noise run on a fast vectorized stabilizer engine (hundreds of
+qubits); everything else runs on a universal trajectory simulator; an exact density-matrix
+engine (and optionally Qiskit Aer) is available to cross-check results.
 
-The physics is validated against known algebraic identities and spot-checked against trusted simulators so that users can trust what they see.
-
-EXAMPLE : 
-
-[NoisiQ-Example](
-
-https://github.com/user-attachments/assets/fd8b3e05-1ef4-409f-899b-d04fd4aa797b
-
-)
-
-
-
----
-
-## Features in Development
-
-- **Circuit builder** — construct quantum circuits from standard gates (H, X, Y, Z, CNOT, etc) using NumPy matrix representations, with full unitarity validation on every gate
-- **Noise model library** — attach Pauli channels (dephasing, depolarizing, bit/phase flips), non-Pauli decoherence (amplitude damping T1, dephasing T2), and coherent control errors to any gate in your circuit, or a random selection from any combination
-- **Error propagation animation** — visualize how an injected error propagates through a circuit as a step-by-step animation or GIF, designed for circuits up to 16 qubits and depth 64
-- **Aggregate heatmaps** — for larger circuits or many-shot runs, view which gates and qubit positions accumulate the most error
-- **Interactive panel** — an ipywidgets-based interface inside Jupyter for selecting gates, error types, and probabilities without rewriting code
-- **Noise suppression demonstrations** — dynamical decoupling-style suppression pipelines with before/after visual comparisons
-- **Circuit adapters** — import circuits from Qiskit, Cirq, and other common frameworks
-  directly into Noisiq 
-
-## Future Goals
-- A web-based app version
-- Addition of more complex decoherence models
-- Explore common QEC models 
-- Allow decoherence models for specific qubit modalities  
-
----
+<p align="center">
+  <img src="docs/images/heatmap.png" width="720" alt="Error heatmap of a repetition code">
+</p>
 
 ## Installation
 
-> **Note:** Noisiq is under active development. The instructions below will work once the initial package is published to PyPI. In the meantime, see [Development Installation](#development-installation).
-
 ```bash
-pip install noisiq
+pip install noisiq                 # core: numpy, matplotlib, stim
+pip install "noisiq[widgets]"      # + Jupyter sliders
+pip install "noisiq[qiskit]"       # + Qiskit import/export and the Aer backend
 ```
 
-### Development Installation
-
-To install from source and contribute to the project:
+From source (for development):
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/<dtsaxum-oss>/noisiq.git
-cd noisiq
-
-# 2. Create and activate a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate        # macOS / Linux
-# .venv\Scripts\activate         # Windows
-
-# 3. Install in editable mode with development dependencies
+git clone https://github.com/dtsaxum-oss/NoisiQ.git
+cd NoisiQ
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
-
-# 4. Confirm everything is working
 pytest
 ```
 
----
-
 ## Quickstart
-
-The following example builds a 2-qubit Bell state circuit, injects a depolarizing error on the Hadamard gate, and runs the propagation animation.
 
 ```python
 import noisiq as nq
 
-# Build a circuit
-circuit = nq.Circuit(num_qubits=2)
-circuit.add_gate(nq.gates.H, qubits=[0])
-circuit.add_gate(nq.gates.CNOT, qubits=[0, 1])
+# 1. Any circuit: fluent builder, ready-made algorithms, or OpenQASM / Qiskit import
+circuit = nq.Circuit(3, name="GHZ").h(0).cx(0, 1).cx(1, 2).measure_all()
 
-# Attach a noise model to the Hadamard gate
-circuit.add_noise(
-    gate_index=0,
-    model=nq.noise.Depolarizing(probability=0.05)
-)
+# 2. A noise model built from rules (or nq.get_hardware("ibm_heron_r3").noise_model())
+noise = nq.NoiseModel.uniform_depolarizing(p1=0.002, p2=0.02, readout=0.01)
 
-# Run the propagation animation
-nq.visualize.propagation(circuit)
+# 3. Simulate — the backend is chosen automatically
+result = nq.simulate(circuit, noise, shots=5000, seed=1, trace_shots=20)
+print(result.summary())
+
+# 4. Look at it
+nq.plot_error_heatmap(result)  # where errors happen
+nq.plot_error_budget(result)  # ranked sources with % share
+anim = nq.animate_propagation(result.trace)  # how they spread
+nq.save_animation(anim, "ghz.gif")
+
+# 5. The math behind any channel or metric
+nq.explain("thermal_relaxation")
 ```
 
----
+Inject an error by hand and watch it move (exact, for any Clifford circuit):
 
-## Roadmap
+```python
+trace = nq.propagate(nq.algorithms.ghz(4), "X", qubit=0, after=0)
+trace.pauli_strings()  # ['IIII', 'XIII', 'XXII', 'XXXI', 'XXXX']
+nq.plot_propagation(trace)
+```
 
-NoisiQ is built on a 10-week development schedule. The table below reflects the current plan.
+## What's inside
 
-| Week | Dates | Milestone |
-|------|-------|-----------|
-| 1 | Mar 30 – Apr 5 | Repo skeleton, `Circuit` and `Gate` classes, CI |
-| 2 | Apr 6 – Apr 12 | Pauli-frame propagation backend |
-| 3 | Apr 13 – Apr 19 | Propagation animation and first demo notebook |
-| 4 | Apr 20 – Apr 26 | Pauli noise channels and aggregate heatmap |
-| 5 | Apr 27 – May 3 | Correctness harness and cross-simulator validation |
-| 6 | May 4 – May 10 | Non-Pauli decoherence (T1 amplitude damping, T2 dephasing) |
-| 7 | May 11 – May 17 | Coherent control errors (over/under-rotation) |
-| 8 | May 18 – May 24 | Circuit adapters (Qiskit / Cirq import) |
-| 9 | May 25 – May 31 | Noise suppression demo (dynamical decoupling) |
-| 10 | Jun 1 – Jun 8 | Polish, final validation, paper, PyPI publish |
+| Module | Contents |
+|---|---|
+| `noisiq.ir` | `Circuit`, gate library (Pauli, Clifford, T, rotations, U, controlled gates, Toffoli, custom unitaries), X/Y/Z measurements, reset, delay, barriers, classical feed-forward |
+| `noisiq.noise` | Pauli / depolarizing / bit- & phase-flip, amplitude & phase damping, thermal relaxation (T1+T2), coherent rotations, general Kraus, readout error, quasi-static detuning; rule-based `NoiseModel`; hardware profiles (IBM, IonQ, Quantinuum) |
+| `noisiq.backends` | `simulate()`; `frame` (vectorized Pauli frames, any size), `statevector` (universal, ≤26 qubits), `density_matrix` (exact, ≤10 qubits), `aer` (optional) |
+| `noisiq.analysis` | exact error propagation (`propagate`), fault spread |
+| `noisiq.visualization` | circuit drawer, heatmaps, propagation plots/animations, error budget, counts, comparisons, density matrices, Bloch spheres |
+| `noisiq.algorithms` | Bell, GHZ, Deutsch–Jozsa, Bernstein–Vazirani, QFT, Grover, phase estimation, repetition codes, teleportation |
+| `noisiq.suppression` | dynamical decoupling (X2/CPMG, XY4, XY8) |
+| `noisiq.io` | OpenQASM 2 import/export, Qiskit adapters |
 
----
+## Documentation
 
-## Verification and Physical Soundness
+* [Getting started](docs/getting-started.md) — a guided tour
+* [Concepts](docs/concepts.md) — conventions (qubit order, layers, bitstrings) and how the pieces fit
+* [Noise & metrics math](docs/math.md) — every channel and metric, generated from the code (`nq.explain(...)`)
+* [Backends](docs/backends.md) — which engine runs what, and how fast
+* [Visualization](docs/visualization.md) — every plot, what it shows and how to read it
+* [Maintainer guide](docs/maintainers.md) — architecture, design decisions, how to extend and release
+* [Examples](examples/) — runnable scripts and a notebook tour
 
-NoisiQ is a tool. Users must be able to trust its outputs. Correctness is established through:
+## Verification
 
-- **Gate-level unitarity checks** — every gate matrix is validated as unitary (U†U = I) at the time it is added to a circuit
-- **Channel sanity checks** — all noise channels are validated for trace preservation and physical parameter bounds (Kraus operators)
-- **Unit tests** — gate conjugation and projection rules, channel properties, and circuit construction are all covered by the test suite
-- **Cross-simulator spot checks** — results on small circuits are compared against trusted simulators to confirm correctness
-
----
+Correctness is checked by an extensive test suite (`pytest`, ~430 tests) including:
+exact Clifford conjugation against Stim; every channel CPTP with closed-form T1/T2 decay;
+statistical agreement between the frame, statevector, exact density-matrix and Qiskit Aer
+engines on random circuits with mid-circuit measurement, resets and feed-forward;
+textbook outcomes for every built-in algorithm; and fuzzing of every plot on random circuits.
 
 ## Contributing
 
-We welcome contributions. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. It covers our branching strategy, commit conventions, code style, docstring format, and testing requirements.
-
----
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[maintainer guide](docs/maintainers.md).
 
 ## Authors
 
-- David Saxum — [GitHub](https://github.com/<dtsaxum-oss>)
-- Teddy Jones— [GitHub](https://github.com/TeddyJ0nes)
-- Giovanni Castorina — [GitHub](https://github.com/<cgio2003>)
-
-Faculty sponsors: Prof. Niknam, Prof. Ross
-
-Completed during the QNT SCI 412 Lab Course as required via the MQST program at UCLA during the Spring quarter, 2026. 
-
----
+David Saxum, Teddy Jones ([@TeddyJ0nes](https://github.com/TeddyJ0nes)), Giovanni Castorina.
+Faculty sponsors: Prof. Niknam, Prof. Ross. Started in the QNT SCI 412 lab course
+(MQST program, UCLA), Spring 2026.
 
 ## Citation
 
-If you use NoisiQ in your research, please cite:
-
 ```bibtex
 @software{noisiq2026,
-  author  = {David Saxum and Teddy Jones and Giovanni Castorina},
+  author  = {Saxum, David and Jones, Teddy and Castorina, Giovanni},
   title   = {NoisiQ: Noise-Aware Quantum Circuit Simulation and Visualization},
   year    = {2026},
-  url     = {https://github.com/<dtsaxum-oss>/noisiq},
-  license = {MIT}
+  url     = {https://github.com/dtsaxum-oss/NoisiQ},
+  version = {0.2.0}
 }
 ```
 
----
-
 ## License
 
-NoisiQ is released under the [MIT License](LICENSE).  
-Copyright (c) 2026 David Saxum, Teddy Jones, Giovanni Castorina
+MIT — see [LICENSE](LICENSE).
