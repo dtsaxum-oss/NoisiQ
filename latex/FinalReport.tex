@@ -1,14 +1,15 @@
 \documentclass[10pt,twocolumn]{article}
 
+\usepackage[T1]{fontenc}
 \usepackage[margin=0.75in]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
 \usepackage{caption}
 \usepackage{subcaption}
-\usepackage{physics}
 \usepackage{siunitx}
 \usepackage{listings}
 \usepackage{hyperref}
+\usepackage{physics}
 \usepackage{makecell}
 \usepackage{booktabs}
 \usepackage[percent]{overpic}
@@ -73,7 +74,7 @@ In the Noisy Intermediate-Scale Quantum (NISQ) era \cite{preskill2018}, circuit 
 \label{sec:intro}
 
 The current generation of quantum computing devices, commonly referred to as
-Noisy Intermediate-Scale Quantum (NISQ) devices~\cite{preskill2018nisq},
+Noisy Intermediate-Scale Quantum (NISQ) devices~\cite{preskill2018},
 represents a pivotal era in the development of practical quantum technology.
 Despite rapid advances in qubit counts and fabrication techniques, meaningful
 quantum computation remains fundamentally constrained by hardware noise.
@@ -86,7 +87,7 @@ and benchmarking quantum algorithms prior to execution on physical hardware.
 However, exact classical simulation of quantum systems is inherently limited
 by the exponential growth of the Hilbert space: an $n$-qubit system requires
 $2^n$ complex amplitudes, rendering statevector simulation tractable only up
-to approximately $\sim$XXX qubits on common hardware.
+to approximately $\sim 14$ qubits on common hardware.
 As counts grow into the tens and
 hundreds of qubits~\cite{arute2019quantum, ibm2023condor}, this exponential scaling
 increasingly separates the classical simulation environment from the hardware. A reality that researchers must navigate, motivating the use of approximate noise models and efficient simulation methods.
@@ -103,7 +104,7 @@ absence of tools that connect the physical noise models to an
 observable, circuit-level effect in an accessible and transparent way.
 
 Existing production-grade simulators, such as Qiskit
-Aer~\cite{qiskit2024aer} and Stim~\cite{gidney2021stim}, are powerful and
+Aer~\cite{qiskit2024} and Stim~\cite{stim2021}, are powerful and
 highly optimized for computational throughput; however, they are not
 primarily designed for educational accessibility or noise transparency.
 Translating a physical noise parameter—such as a $T_1$ relaxation time or imperfect gate implementation into an observable effect on a specific circuit
@@ -247,6 +248,7 @@ For example, always-on residual coupling in superconducting qubits causes joint 
 State Preparation and Measurement (SPAM) errors are modeled by injecting depolarizing noise at the boundaries of the circuit, 
 with state preparation errors applied before the first gate and measurement errors applied after the final gate,
 ensuring that the initialization and readout fidelities match published hardware benchmarks.
+
 
 
 \section{Visualization and Diagnostics}
@@ -702,6 +704,7 @@ this is calculated using the standard dimension formula \cite{nielsen2002}:
     \end{equation}
     This metric is useful for characterizing the overall quality of a noisy Clifford circuit independent of the data qubits being processed.
 
+
 \section{NoisiQ Examples}
 \label{sec:examples}
 
@@ -906,7 +909,7 @@ are not addressable by storage-window DD.
 The quantum Fourier transform (QFT) is the quantum analog of the
 discrete Fourier transform and underlies a broad class of quantum
 algorithms including Shor's factoring algorithm and quantum phase
-estimation~\cite{nielsen2010quantum}.
+estimation~\cite{nielsenchuang2000}.
 The 3-qubit QFT consists of Hadamard gates, controlled phase
 rotations at angles $\pi/2$ and $\pi/4$, and a final bit-reversal
 SWAP. NoisiQ realizes the $\pi/2$ rotation with the native
@@ -952,23 +955,26 @@ needed: the heatmap is rendered directly from the true QFT.
 
 \section{Conclusion}
 \label{sec:conclusion}
+\paragraph{}
+    In this report, we introduced \textbf{NoisiQ}, 
+an open-source Python library designed to bridge the gap between abstract quantum algorithms and the physical realities of hardware noise in the NISQ era. 
+While existing production-grade simulators are highly optimized for computational throughput, 
+they often lack the intuitive, visual feedback necessary for students and early-career researchers to fully grasp how errors propagate through a circuit. 
+NoisiQ addresses this educational and practical gap by providing a unified framework for noise-aware simulation and comprehensive visual diagnostics.
 
-\begin{comment}
-    Reference list to add / find: 
-    GHZ paper 
-    MEK paper 
-    Qiskit paper
-    STIM paper 
-    Grovers Algorithm
-    DJ Algorithm
-    QFT
-    Quantum Phase Estimation
-    DD
-    Each hardware noise paper
-    Qasm (?) 
-    Pauli-twirling 
-    Papers specific to noise types, i.e. T1 / T2 etc? 
-\end{comment}
+    At its core, NoisiQ employs a dynamic routing architecture that automatically selects the most efficient simulation backend by leveraging Stim for highly scalable Clifford and Pauli-twirled circuits, and Qiskit Aer or 
+a custom trajectory backend for exact density-matrix simulation of universal circuits. 
+This flexibility allows users to seamlessly scale from small, exact physical models to large-scale quantum error correction demonstrations. 
+By integrating pre-loaded hardware profiles, NoisiQ enables straightforward cross-platform benchmarking, 
+allowing users to compare the effects of $T_1$ relaxation, $T_2$ dephasing, coherent over-rotations, and SPAM errors across leading quantum architectures like IBM superconducting processors and trapped-ion systems from Quantinuum and IonQ.
+
+    Furthermore, NoisiQ's suite of visualization tools, including step-by-step error trajectory animations, aggregate error heatmaps, and an interactive diagnostic interface, 
+transforms abstract noise parameters into observable, circuit-level consequences. 
+Coupled with built-in metrics and noise suppression techniques like dynamical decoupling, NoisiQ empowers users to rapidly prototype, test, and visualize error mitigation strategies. 
+
+    Ultimately, NoisiQ serves as both a powerful research sandbox and an accessible educational instrument. 
+By making the connection between physical noise models and algorithmic performance transparent, NoisiQ helps cultivate a deeper physical intuition for quantum computing, 
+paving the way for more robust algorithm design in the presence of hardware noise.
 
 \section*{Future Work}
 \label{sec:future_work}
@@ -999,8 +1005,32 @@ Additionally, we thank the members of the 2026 UCLA Master of Quantum Science an
 Finally, we acknowledge the foundational work of the open-source quantum software community. 
 NoisiQ's development was made possible by leveraging established frameworks, particularly IBM's Qiskit \cite{qiskit2024} and Craig Gidney's Stim \cite{stim2021}.
 
+
 \bibliographystyle{ieeetr}
 \bibliography{refs}
+
+\begin{comment}
+    Reference list to add / find: 
+    preskill2018
+    krantz2019superconducting, kjaergaard2020superconducting (verify these)
+    villalonga2019flexible (verfiy)
+    arute2019quantum, ibm2023condor (verify)
+    cai2019constructing, hashim2021randomized (verify)
+    viola1999dynamical (verify)
+    GHZ paper 
+    MEK paper 
+    Qiskit paper
+    STIM paper 
+    Grovers Algorithm
+    DJ Algorithm
+    QFT
+    Quantum Phase Estimation
+    DD
+    Each hardware noise paper
+    Qasm (?) 
+    Pauli-twirling 
+    Papers specific to noise types, i.e. T1 / T2 etc? 
+\end{comment}
 
 \clearpage
 \appendix
@@ -1068,17 +1098,409 @@ NoisiQ's development was made possible by leveraging established frameworks, par
 
 \subsection*{Grover's Algorithm}
 \label{subsec:grovers}
+Grover's search amplifies the amplitude of a marked computational-basis
+state through repeated application of an oracle and a diffusion operator
+\cite{grover1996fast}. The NoisiQ example implements a 3-qubit search for
+the marked state $\ket{111}$ over two Grover iterations. Each iteration
+applies the phase oracle --- a doubly-controlled $Z$ (CCZ) on the three
+qubits, which flips the phase of $\ket{111}$ --- followed by the diffuser
+($H^{\otimes 3} \, X^{\otimes 3} \, \text{CCZ} \, X^{\otimes 3} \,
+H^{\otimes 3}$), which reflects the state about the uniform superposition.
+For three qubits the optimal iteration count is
+$\lfloor \tfrac{\pi}{4}\sqrt{8} \rfloor = 2$, so this circuit reaches close
+to peak success probability in the noiseless limit.
+The circuit is non-Clifford (the CCZ gates produce non-stabilizer
+intermediate states), so it is simulated with the statevector-based
+\texttt{TrajectoryBackend}; the aggregate error-burden pass is run via
+\texttt{run\_aggregate}, which returns the same \texttt{AggregateResult}
+dataclass as \texttt{ManyShotRunner} together with the averaged density
+matrix. As in the GHZ example, the dominant per-shot error burden falls on
+the two-qubit entangling layers --- here the four CCZ gadgets (one oracle
+and one diffuser reflection per iteration) --- visible as the concentrated
+halos in Figure~\ref{fig:grover_heatmap}, while the single-qubit
+$H$/$X$ layers contribute comparatively little.
+Under an \texttt{ibm\_eagle\_r3} hardware noise profile aggregated over
+2\,000 shots, the noisy state retains an ideal-state fidelity of
+$F = \langle \psi_{\text{ideal}} | \rho | \psi_{\text{ideal}} \rangle
+= 0.8383$ with the noiseless Grover output, and the probability of
+measuring the marked state is $P(\ket{111}) = 0.7944$, compared with
+$\approx 0.94$ in the noiseless limit. The per-qubit marginal purities are
+$\mathrm{Tr}(\rho_{q}^2) = 0.814,\ 0.821,\ 0.819$ for $q_0, q_1, q_2$,
+reflecting the residual mixing introduced across the two iterations.
+\begin{figure*}[tbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/grover.png}
+    \caption{
+        Aggregate error heatmap for a 3-qubit Grover search targeting
+        $\ket{111}$ over two iterations, under an \texttt{ibm\_eagle\_r3}
+        hardware noise profile aggregated over 2\,000 shots. Red gate and
+        wire halos encode the expected per-shot gate error burden, which
+        concentrates on the two-qubit CCZ gadgets (the oracle and diffuser
+        reflections) and is minimal on the single-qubit $H$/$X$ layers. The
+        metric box reports the ideal-state fidelity
+        $F = 0.8383$ (overlap of the noisy state with the full noiseless
+        output) and the marked-state success probability
+        $P(\ket{111}) = 0.7944$ (noiseless $\approx 0.94$). The per-qubit
+        marginal purities after tracing out the other qubits are
+        $\mathrm{Tr}(\rho_{q}^2) \approx 0.81$--$0.82$.
+    }
+    \label{fig:grover_heatmap}
+\end{figure*}
+Note that NoisiQ applies the CCZ as a native three-qubit gate and assigns
+it the model's two-qubit error rate; on hardware the CCZ would be compiled
+into multiple two-qubit gates, so the simulated error burden on the oracle
+and diffuser is a lower bound relative to a fully compiled implementation.
 
-\subsection*{Deutsch-Jozsa Algorithm}
+\subsection*{Deutsch--Jozsa Algorithm}
 \label{subsec:dj}
+The Deutsch--Jozsa algorithm determines whether a Boolean function
+$f:\{0,1\}^n \to \{0,1\}$ is constant or balanced in a single oracle query,
+where any classical deterministic algorithm requires up to $2^{n-1}+1$
+queries in the worst case \cite{deutsch1992rapid}. The NoisiQ example
+implements the 3-qubit case (two input qubits $q_0, q_1$ and one ancilla
+$q_2$) with a balanced oracle. The ancilla is prepared in
+$\ket{-} = (\ket{0}-\ket{1})/\sqrt{2}$ by an $X$ followed by a Hadamard, so
+that the oracle's bit-flips act as phase kickbacks on the input register;
+the balanced oracle is realized as $\text{CNOT}(q_0\!\to\!q_2)\,
+\text{CNOT}(q_1\!\to\!q_2)$, and a final Hadamard layer on the input qubits
+converts the kicked-back phases into the measured outcome. For a balanced
+oracle the input register reads $\ket{11}$ with certainty in the noiseless
+limit; a constant oracle would instead yield $\ket{00}$.
+
+The circuit is entirely Clifford ($H$, $X$, CNOT), so
+\texttt{ManyShotRunner} routes the aggregate error-burden pass directly to
+the Stim backend, while a separate \texttt{TrajectoryBackend} pass supplies
+the density matrix for the fidelity metrics. A noiseless self-check
+confirms $P(\ket{11}) = 1.000$ before any noise is applied, validating the
+circuit construction from first principles. Because the circuit is shallow
+(depth five, with only the two oracle CNOTs as entangling gates), it is
+comparatively robust to noise: the dominant per-shot error burden falls on
+the two CNOT layers, with idle $T_1/T_2$ decoherence accumulating on the
+input qubits during the oracle, visible as the wire halos in
+Figure~\ref{fig:dj_heatmap}.
+
+Under an \texttt{ibm\_eagle\_r3} hardware noise profile, the noisy state
+retains an ideal-state fidelity of
+$F = \langle \psi_{\text{ideal}} | \rho | \psi_{\text{ideal}} \rangle
+= 0.9400$ with the noiseless output, and the probability of correctly
+reading the balanced-oracle answer is $P(\ket{11}) = 0.9525$, compared with
+the deterministic $P(\ket{11}) = 1$ in the noiseless limit. The
+marked-state probability slightly exceeds the full-state fidelity because
+it marginalizes over the ancilla and the relative phase, forgiving errors
+that the full-state overlap penalizes. The per-qubit marginal purities are
+$\mathrm{Tr}(\rho_{q}^2) = 0.951,\ 0.956,\ 0.951$ for $q_0, q_1, q_2$. The
+high values across all metrics --- in contrast to the deeper Grover circuit
+of Appendix~\ref{subsec:grovers} --- reflect the shallow, low-entangling
+structure that makes Deutsch--Jozsa a forgiving benchmark for a
+near-term noise model.
+
+\begin{figure*}[tbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/dj_heatmap.png}
+    \caption{
+        Aggregate error heatmap for the 3-qubit Deutsch--Jozsa algorithm
+        with a balanced oracle, under an \texttt{ibm\_eagle\_r3} hardware
+        noise profile aggregated over 2\,000 shots. Red gate and wire halos
+        encode the expected per-shot gate error burden, which concentrates
+        on the two oracle CNOT layers ($t=2$, $t=3$); the blue gradient
+        shows idle $T_1/T_2$ decoherence accumulating on the input qubits.
+        The metric box reports the ideal-state fidelity $F = 0.9400$ and the
+        marked-state success probability $P(\ket{11}) = 0.9525$ (noiseless
+        $P(\ket{11}) = 1$).
+    }
+    \label{fig:dj_heatmap}
+\end{figure*}
 
 \subsection*{Quantum Phase Estimation}
-\label{subsec:dj}
+\label{subsec:qpe}
+Quantum phase estimation (QPE) estimates the eigenphase $\varphi$ of a unitary
+$U$, given one of its eigenstates, by writing a binary approximation of
+$\theta = \varphi/2\pi$ into a counting register through controlled applications
+of $U$ followed by an inverse quantum Fourier transform
+\cite{nielsenchuang2000}. The NoisiQ example implements the
+three-counting-qubit case (counting qubits $q_0, q_1, q_2$ and one target
+$q_3$) for $U = P(\varphi)$ with $\varphi = \pi/4$, so the true phase is
+$\theta = 1/8 = 0.001_2$, exactly representable in three bits. The target qubit
+is prepared in $\ket{1}$ --- an eigenstate of $P(\varphi)$ with eigenvalue
+$e^{i\varphi}$ --- by an $X$ gate, the counting register is placed in uniform
+superposition by a Hadamard layer, and each counting qubit $q_k$ controls
+$U^{2^k} = P(\varphi\,2^k)$ on the target, kicking the phase
+$e^{2\pi i \theta 2^k}$ back onto the control. An inverse QFT on the counting
+register then converts these accumulated phases into the measured binary
+estimate. Because the encoding assigns $q_0$ bit-weight $2^0$ (least
+significant) and $q_2$ bit-weight $2^2$ (most significant), the inverse QFT is
+ordered with $q_2$ as the most-significant qubit to match; the correct readout
+is the counting-register state $\ket{100}_{q_0 q_1 q_2}$, i.e.\ integer $1$ and
+$\hat\theta = 1/8$.
 
-\paragraph{Hardware Noise Comparison}
-\label{paragraph:hardware_comp}
-\begin{comment}
-    T1 / T2 across different hardware platforms and the effect DD on them 
-\end{comment}
+The controlled-$P$ rotations are non-Clifford, so the heatmap is produced from a
+Clifford stand-in (each $P(\theta)$ replaced by $S/S^\dagger$ with the CNOT
+topology preserved) routed through \texttt{ManyShotRunner} on the Stim backend,
+while the fidelity and success-probability metrics come from a separate
+\texttt{TrajectoryBackend} pass on the real circuit under a coherent error
+model. A noiseless self-check confirms $P(\ket{100}) = 1.000$ before any noise
+is applied, validating both the circuit construction and the inverse-QFT qubit
+ordering from first principles. Each controlled-$U^{2^k}$ and each inverse-QFT
+controlled-phase gadget decomposes into a pair of CNOTs, making QPE the most
+entangling-gate-dense of the appendix examples; the dominant per-shot error
+burden therefore concentrates on these CNOT layers, with idle $T_1/T_2$
+decoherence accumulating on the counting qubits across the long gadget sequence,
+visible as the gate and wire halos in Figure~\ref{fig:qpe_heatmap}.
+
+Under an \texttt{ibm\_eagle\_r3} hardware noise profile (heatmap aggregated over
+2\,000 shots; metrics from a 600-trajectory pass), the noisy state retains an
+ideal-state fidelity of
+$F = \langle \psi_{\text{ideal}} | \rho | \psi_{\text{ideal}} \rangle = 0.7414$
+with the noiseless output, and the probability of reading the correct phase is
+$P(\ket{100}) = 0.7580 \pm 0.0175$, compared with the exact
+$P(\ket{100}) = 1$ in the noiseless limit. As in the Deutsch--Jozsa example of
+Appendix~\ref{subsec:dj}, the readout success probability slightly exceeds the
+full-state fidelity because it marginalizes over the target qubit and the
+relative phases, forgiving errors that the full-state overlap penalizes. The
+per-qubit marginal purities are
+$\mathrm{Tr}(\rho_q^2) = 0.851,\ 0.786,\ 0.751,\ 0.923$ for
+$q_0, q_1, q_2, q_3$, the lower counting-register values reflecting the residual
+mixing introduced across the deep controlled-phase and inverse-QFT sequence. The
+uniformly lower metrics relative to Grover (Appendix~\ref{subsec:grovers}) and
+Deutsch--Jozsa (Appendix~\ref{subsec:dj}) are consistent with QPE's greater
+circuit depth and entangling-gate count.
+
+\begin{figure*}[tbp]
+    \centering
+    \includegraphics[width=\textwidth]{images/phase_estimae.png}
+    \caption{
+        Aggregate error heatmap for the three-counting-qubit quantum phase
+        estimation circuit ($U = P(\pi/4)$, $\theta = 1/8$), under an
+        \texttt{ibm\_eagle\_r3} hardware noise profile (heatmap aggregated over
+        2\,000 shots). Red gate and wire halos encode the expected per-shot gate
+        error burden, which concentrates on the CNOT pairs inside the
+        controlled-$U^{2^k}$ and inverse-QFT controlled-phase gadgets; the blue
+        gradient shows idle $T_1/T_2$ decoherence on the counting qubits. The
+        metric box reports the ideal-state fidelity $F = 0.7414$, the readout
+        success probability $P(\ket{100}) = 0.7580 \pm 0.0175$ from a
+        600-trajectory pass (noiseless $P(\ket{100}) = 1$), and the recovered
+        phase $\hat\theta = 1/8$. The counting bitstring is written
+        $q_0 q_1 q_2$ with $q_0$ the least-significant bit.
+    }
+    \label{fig:qpe_heatmap}
+\end{figure*}
+
+\subsection*{Code Listings}
+\label{subsec:code_listings}
+ 
+The examples in this appendix and the figures throughout the paper share a
+single, uniform workflow. A user (i) builds a circuit, (ii) attaches a noise
+model, (iii) fills idle gaps so decoherence accrues on waiting qubits, (iv)
+runs a backend, and (v) reads out a metric or renders a diagnostic. The
+listings below give that workflow in full and then show the two ways NoisiQ
+accepts a noise model. The per-algorithm circuits in the rest of this appendix
+differ only in step (i); steps (ii)--(v) are identical to
+Listing~\ref{lst:pipeline}. Each listing is self-contained and runnable against
+the public \texttt{noisiq} API; for brevity we import only the symbols each
+example actually uses.
+ 
+% ---------------------------------------------------------------------
+%  Listing 1 — the core pipeline
+% ---------------------------------------------------------------------
+\begin{lstlisting}[style=noisiqpython, caption={The NoisiQ pipeline. Every
+example in the paper is this template with a different circuit builder in
+step (1). Here a GHZ circuit is run under a hardware noise profile and its
+state fidelity and global purity are reported.}, label={lst:pipeline}]
+import noisiq as nq
+from noisiq.backends import TrajectoryBackend
+from noisiq.noise import fill_idle_with_identities
+from noisiq.results import ghz_state_fidelity
+from noisiq.visualization.density_matrix import global_purity
+ 
+# (1) BUILD a circuit with the fluent builder. Each call returns the
+#     circuit, so calls can be chained. t= pins a gate to a time layer;
+#     omit it to let NoisiQ schedule the gate into the next free slot.
+n = 4
+circuit = nq.Circuit(n_qubits=n, name="ghz")
+circuit.h(0)                       # Hadamard on q0
+for q in range(n - 1):
+    circuit.cnot(q, q + 1)         # CNOT cascade spreads entanglement
+ 
+# (2) NOISE MODEL from a calibrated hardware profile (see Listing 2 for the
+#     full set of options, and Listing 3 for a hand-built alternative).
+profile = nq.noise.get_hardware("ibm_eagle_r3")
+ 
+# (3) FILL IDLE slots: insert IDLE ops on qubits that are waiting, so the
+#     noise model applies T1/T2 decoherence during idle time. gate_times
+#     supplies the physical duration of each gate.
+circuit = fill_idle_with_identities(circuit, profile.gate_times)
+ 
+# Build the per-operation noise model AFTER filling, so the freshly added
+# IDLE ops also receive a channel. "pauli_twirl" expresses every channel as
+# stochastic X/Y/Z, which the Pauli-frame backend and heatmap require.
+noise = profile.to_noise_model(circuit, mode="t2", representation="pauli_twirl")
+ 
+# (4) RUN a backend. TrajectoryBackend is the exact density-matrix engine
+#     (<= 13 qubits); it returns a SimulationResult whose final_state is the
+#     averaged density matrix rho.
+result = TrajectoryBackend().run(circuit, noise_model=noise, n_shots=2000, seed=42)
+rho = result.final_state
+ 
+# (5) METRICS. The metric helpers return a MetricReport; the number is .value.
+fidelity = ghz_state_fidelity(rho, n).value     # F = <GHZ|rho|GHZ>
+purity   = global_purity(rho).value             # Tr(rho^2): 1.0 = pure
+print(f"GHZ fidelity = {fidelity:.4f},  purity = {purity:.4f}")
+\end{lstlisting}
+ 
+% ---------------------------------------------------------------------
+%  Listing 2 — passing noise models (hardware profile path)
+% ---------------------------------------------------------------------
+NoisiQ accepts a noise model in two forms. The first, used for every hardware
+example in the paper, is a \texttt{HardwareProfile} retrieved from the built-in
+registry. Calling \texttt{to\_noise\_model()} on the profile returns a
+dictionary mapping each operation index to a noise channel.  The
+\texttt{representation} argument selects how coherent and idle errors are
+expressed: \texttt{"pauli\_twirl"} produces stochastic X/Y/Z channels (required
+by the Stim/\texttt{ManyShotRunner} path and the error heatmap), while
+\texttt{"coherent"} keeps idle dephasing as a genuine per-shot rotation, which
+is the representation that lets dynamical decoupling refocus it
+(Section~\ref{subsec:DD}).
+ 
+\begin{lstlisting}[style=noisiqpython, caption={Passing a noise model from a
+hardware profile. \texttt{list\_hardware()} enumerates the registry; the
+chosen profile builds a per-operation channel dictionary.}, label={lst:noise_hw}]
+import noisiq as nq
+ 
+# Discover available calibrated profiles (IBM Eagle/Heron, IonQ, Quantinuum...).
+print(nq.noise.list_hardware())
+ 
+profile = nq.noise.get_hardware("ibm_eagle_r3")
+print(profile.t1, profile.t2)        # median T1, T2 in seconds
+ 
+# representation="pauli_twirl": stochastic X/Y/Z -> Pauli-frame + heatmap.
+noise_twirl = profile.to_noise_model(circuit, mode="t2",
+                                     representation="pauli_twirl")
+ 
+# representation="coherent": idle-Z drift stays a real rotation that DD can
+# refocus -> use this for the fidelity/purity pass in the DD example.
+noise_coherent = profile.to_noise_model(circuit, mode="t2",
+                                        representation="coherent")
+\end{lstlisting}
+ 
+% ---------------------------------------------------------------------
+%  Listing 3 — passing noise models (hand-built Pauli path)
+% ---------------------------------------------------------------------
+The second form is an explicit dictionary the user constructs directly. A
+noise model is simply a mapping \texttt{\{operation\_index: channel\}}, so any
+per-gate error structure can be specified by hand. This is the form used for
+the Bell parity-check figure (Section~\ref{subsec:heatmap}), where an X-biased
+Pauli channel gives the parity check a visible, interpretable job. The
+\texttt{PauliError} channel takes the three single-qubit error probabilities
+$p_X$, $p_Y$, $p_Z$ directly.
+ 
+\begin{lstlisting}[style=noisiqpython, caption={A hand-built Pauli noise model.
+The model is a dict from operation index to a channel; here a larger error rate
+is assigned to two-qubit gates than to single-qubit gates, with an X bias.},
+label={lst:noise_manual}]
+from noisiq.ir.circuit import Operation
+from noisiq.noise import PauliError
+ 
+def pauli_noise_for_ops(circuit, p_1q=0.006, p_2q=0.014, x_bias=0.85):
+    """Map each gate to a PauliError. Two-qubit gates get the larger rate;
+    the non-X share is split evenly between Y and Z."""
+    noise = {}
+    for idx, op in enumerate(circuit.operations):
+        if not isinstance(op, Operation):     # skip measurements, etc.
+            continue
+        p = p_2q if op.gate.num_qubits == 2 else p_1q
+        noise[idx] = PauliError(p_x=p * x_bias,
+                                p_y=p * (1 - x_bias) / 2,
+                                p_z=p * (1 - x_bias) / 2)
+    return noise
+ 
+noise = pauli_noise_for_ops(circuit)          # ready to pass to any backend
+\end{lstlisting}
+ 
+% ---------------------------------------------------------------------
+%  Listing 4 — GHZ circuit (main-text example, Section IV-A)
+% ---------------------------------------------------------------------
+\paragraph{GHZ state (Section~\ref{subsec:GHZ}).}
+The GHZ circuit is entirely Clifford, so the aggregate error-burden pass that
+colours the heatmap is routed to the Stim backend through
+\texttt{ManyShotRunner}, while a separate \texttt{TrajectoryBackend} pass
+supplies the density matrix for the fidelity and purity metrics. Both passes
+use the same circuit and the same hardware profile.
+ 
+\begin{lstlisting}[style=noisiqpython, caption={Building and running the
+$N$-qubit GHZ example. The Clifford circuit is sent to Stim via
+\texttt{ManyShotRunner} for error statistics; \texttt{TrajectoryBackend}
+provides the density matrix for the reported metrics.}, label={lst:ghz}]
+import noisiq as nq
+from noisiq.backends import ManyShotRunner, TrajectoryBackend
+from noisiq.noise import fill_idle_with_identities
+from noisiq.results import ghz_state_fidelity
+ 
+def build_ghz_circuit(n):
+    c = nq.Circuit(n_qubits=n, name=f"ghz_{n}q")
+    c.h(0)                                  # superpose q0
+    for q in range(n - 1):
+        c.cnot(q, q + 1)                    # entangle the cascade
+    return c
+ 
+n = 13
+circuit = build_ghz_circuit(n)
+profile = nq.noise.get_hardware("ibm_eagle_r3")
+circuit = fill_idle_with_identities(circuit, profile.gate_times)
+noise   = profile.to_noise_model(circuit, mode="t2", representation="pauli_twirl")
+ 
+# Clifford -> Stim path: per-gate error statistics for the heatmap.
+aggregate = ManyShotRunner().run(circuit, n_shots=4096, noise_config=noise, seed=42)
+print("zero-error fraction:", aggregate.zero_error_fraction)
+ 
+# Density-matrix path: fidelity metric.
+rho = TrajectoryBackend().run(circuit, noise_model=noise, n_shots=2000, seed=42).final_state
+print("GHZ fidelity:", ghz_state_fidelity(rho, n).value)
+\end{lstlisting}
+ 
+% ---------------------------------------------------------------------
+%  Listing 5 — Bell parity-check circuit (mid-circuit measurement + c_if)
+% ---------------------------------------------------------------------
+\paragraph{Bell parity check (Section~\ref{subsec:heatmap}).}
+This circuit exercises mid-circuit measurement and classical feedback. A
+parity ancilla (q2) is measured and reset, and its outcome conditionally
+triggers a correction on q1 through \texttt{c\_if}. Classical bits are
+allocated with \texttt{add\_classical\_register}, and \texttt{measure} writes
+an outcome into a named bit. The hand-built noise model of
+Listing~\ref{lst:noise_manual} is used here so the parity repair has a visible
+effect.
+ 
+\begin{lstlisting}[style=noisiqpython, caption={The Bell parity-check circuit
+with a mid-circuit measurement (\texttt{measure(..., reset=True)}) and a
+conditional correction (\texttt{c\_if(...).x(...)}). \texttt{syndrome[0]} is a
+classical bit allocated on the circuit.}, label={lst:bell}]
+import noisiq as nq
+from noisiq.backends import ManyShotRunner, StimTableauBackend
+ 
+c = nq.Circuit(n_qubits=3, name="bell_parity_check")
+syndrome = c.add_classical_register("syndrome", 1)   # 1 classical bit
+ 
+# Bell pair on q0, q1.
+c.h(0, t=0)
+c.cnot(0, 1, t=1)
+ 
+# Z0Z1 parity into ancilla q2, then measure + reset it.
+c.cnot(0, 2, t=2)
+c.cnot(1, 2, t=3)
+c.measure(2, syndrome[0], reset=True, t=4)
+ 
+# Conditional repair: if the parity bit is 1, apply X to q1.
+c.c_if(syndrome[0], value=1).x(1, t=5)
+ 
+# noise = pauli_noise_for_ops(c)   # from Listing 3
+runner = ManyShotRunner(StimTableauBackend())        # Clifford -> Stim
+aggregate = runner.run(c, n_shots=4096, noise_config=noise, seed=42)
+\end{lstlisting}
+ 
+\noindent
+A non-Clifford circuit (for example the QFT of Section~\ref{subsec:qft}) needs
+no change to this workflow: passing it to NoisiQ's \texttt{BackendSelector}, or
+calling \texttt{TrajectoryBackend().run\_aggregate(...)} directly, detects the
+non-Clifford gates and selects the density-matrix backend automatically, while
+the noise-model and metric steps remain exactly as above.
 
 \end{document}

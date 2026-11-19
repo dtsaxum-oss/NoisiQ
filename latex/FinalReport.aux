@@ -6,15 +6,15 @@
 \citation{tripathi2022}
 \citation{qiskit2024}
 \citation{stim2021}
-\citation{preskill2018nisq}
+\citation{preskill2018}
 \citation{krantz2019superconducting}
 \citation{kjaergaard2020superconducting}
 \citation{arute2019quantum}
 \citation{ibm2023condor}
 \citation{cai2019constructing}
 \citation{hashim2021randomized}
-\citation{qiskit2024aer}
-\citation{gidney2021stim}
+\citation{qiskit2024}
+\citation{stim2021}
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
 \newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
 \citation{openqasm2017}
@@ -64,8 +64,8 @@
 \@writefile{toc}{\contentsline {paragraph}{}{3}{section*.11}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.4}Coherent Over-rotation}{3}{subsubsection.3.2.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{}{3}{section*.12}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.5}Crosstalk and Correlated Errors}{3}{subsubsection.3.2.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{}{3}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.5}Crosstalk and Correlated Errors}{4}{subsubsection.3.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{}{4}{section*.13}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.6}SPAM Errors}{4}{subsubsection.3.2.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{}{4}{section*.14}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {4}Visualization and Diagnostics}{4}{section.4}\protected@file@percent }
@@ -87,19 +87,19 @@
 \newlabel{eq:t2_dephasing}{{4}{5}{Wire halos: idle-time decoherence via Pauli-twirl proxy}{equation.4}{}}
 \newlabel{eq:coherent_twirl}{{5}{5}{Wire halos: idle-time decoherence via Pauli-twirl proxy}{equation.5}{}}
 \newlabel{eq:wire_intensity}{{6}{5}{Wire halos: idle-time decoherence via Pauli-twirl proxy}{equation.6}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces  Aggregate error heatmap for a Bell parity-check circuit rendered in \texttt  {[qec]} correction-aware mode under an \texttt  {ibm\_eagle\_r3} hardware noise profile aggregated over 4\,096 shots with a Pauli-twirled noise model. \textbf  {Gate halos} (red scale) show the expected downstream Pauli propagation burden and attached gate noise channel via (Eq.~\ref {eq:burden}). In \texttt  {[qec]} mode the burden walk assumes the mid-circuit correction fires correctly, so only errors that precede or evade the ancilla contribute to the displayed burden. \textbf  {Wire halos} (blue scale) show the idle-time decoherence intensity $I_\mathrm  {wire}$ (Eq.~\ref {eq:wire_intensity}) \newline  \small  This circuit example represents a bit-flip parity repair only; not full Bell-state QEC. }}{6}{figure.caption.20}\protected@file@percent }
-\newlabel{fig:heatmap}{{2}{6}{Aggregate error heatmap for a Bell parity-check circuit rendered in \texttt {[qec]} correction-aware mode under an \texttt {ibm\_eagle\_r3} hardware noise profile aggregated over 4\,096 shots with a Pauli-twirled noise model. \textbf {Gate halos} (red scale) show the expected downstream Pauli propagation burden and attached gate noise channel via (Eq.~\ref {eq:burden}). In \texttt {[qec]} mode the burden walk assumes the mid-circuit correction fires correctly, so only errors that precede or evade the ancilla contribute to the displayed burden. \textbf {Wire halos} (blue scale) show the idle-time decoherence intensity $I_\mathrm {wire}$ (Eq.~\ref {eq:wire_intensity}) \newline \small This circuit example represents a bit-flip parity repair only; not full Bell-state QEC}{figure.caption.20}{}}
 \citation{nielsenchuang2000}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Interactive Diagnostic Interface}{7}{subsection.4.3}\protected@file@percent }
-\newlabel{subsec:interactive}{{4.3}{7}{Interactive Diagnostic Interface}{subsection.4.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Metrics}{7}{section.5}\protected@file@percent }
-\newlabel{sec:metrics}{{5}{7}{Metrics}{section.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{}{7}{section*.23}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Fidelity Calculations}{7}{subsection.5.1}\protected@file@percent }
-\newlabel{subsec:fidelity}{{5.1}{7}{Fidelity Calculations}{subsection.5.1}{}}
-\@writefile{toc}{\contentsline {paragraph}{}{7}{section*.24}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Panel mode of the interactive diagnostic interface. \textbf  {Left}: the aggregate error heatmap with gate and wire halos. \textbf  {Right}: the \texttt  {ipywidgets.Output} panel populated by clicking the cursor over the CNOT gate on qubits $[0,\,2]$ at $t=2$ (the cursor sits atop the represented gate location), showing the assigned Pauli channel probabilities $p_X$, $p_Y$, $p_Z$, per-qubit cumulative decoherence, many-shot zero-error survival, and the downstream burden $b_k$ and halo intensity $\tilde  {b}_k$ (Eq.~\ref {eq:burden}, Eq.~\ref {eq:halo_norm}) that determine the gate's color in the heatmap.}}{8}{figure.caption.21}\protected@file@percent }
-\newlabel{fig:interactive_panel}{{3}{8}{Panel mode of the interactive diagnostic interface. \textbf {Left}: the aggregate error heatmap with gate and wire halos. \textbf {Right}: the \texttt {ipywidgets.Output} panel populated by clicking the cursor over the CNOT gate on qubits $[0,\,2]$ at $t=2$ (the cursor sits atop the represented gate location), showing the assigned Pauli channel probabilities $p_X$, $p_Y$, $p_Z$, per-qubit cumulative decoherence, many-shot zero-error survival, and the downstream burden $b_k$ and halo intensity $\tilde {b}_k$ (Eq.~\ref {eq:burden}, Eq.~\ref {eq:halo_norm}) that determine the gate's color in the heatmap}{figure.caption.21}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Interactive Diagnostic Interface}{6}{subsection.4.3}\protected@file@percent }
+\newlabel{subsec:interactive}{{4.3}{6}{Interactive Diagnostic Interface}{subsection.4.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Metrics}{6}{section.5}\protected@file@percent }
+\newlabel{sec:metrics}{{5}{6}{Metrics}{section.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{}{6}{section*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Fidelity Calculations}{6}{subsection.5.1}\protected@file@percent }
+\newlabel{subsec:fidelity}{{5.1}{6}{Fidelity Calculations}{subsection.5.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{}{6}{section*.24}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces  Aggregate error heatmap for a Bell parity-check circuit rendered in \texttt  {[qec]} correction-aware mode under an \texttt  {ibm\_eagle\_r3} hardware noise profile aggregated over 4\,096 shots with a Pauli-twirled noise model. \textbf  {Gate halos} (red scale) show the expected downstream Pauli propagation burden and attached gate noise channel via (Eq.~\ref {eq:burden}). In \texttt  {[qec]} mode the burden walk assumes the mid-circuit correction fires correctly, so only errors that precede or evade the ancilla contribute to the displayed burden. \textbf  {Wire halos} (blue scale) show the idle-time decoherence intensity $I_\mathrm  {wire}$ (Eq.~\ref {eq:wire_intensity}) \newline  \small  This circuit example represents a bit-flip parity repair only; not full Bell-state QEC. }}{7}{figure.caption.20}\protected@file@percent }
+\newlabel{fig:heatmap}{{2}{7}{Aggregate error heatmap for a Bell parity-check circuit rendered in \texttt {[qec]} correction-aware mode under an \texttt {ibm\_eagle\_r3} hardware noise profile aggregated over 4\,096 shots with a Pauli-twirled noise model. \textbf {Gate halos} (red scale) show the expected downstream Pauli propagation burden and attached gate noise channel via (Eq.~\ref {eq:burden}). In \texttt {[qec]} mode the burden walk assumes the mid-circuit correction fires correctly, so only errors that precede or evade the ancilla contribute to the displayed burden. \textbf {Wire halos} (blue scale) show the idle-time decoherence intensity $I_\mathrm {wire}$ (Eq.~\ref {eq:wire_intensity}) \newline \small This circuit example represents a bit-flip parity repair only; not full Bell-state QEC}{figure.caption.20}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Panel mode of the interactive diagnostic interface. \textbf  {Left}: the aggregate error heatmap with gate and wire halos. \textbf  {Right}: the \texttt  {ipywidgets.Output} panel populated by clicking the cursor over the CNOT gate on qubits $[0,\,2]$ at $t=2$ (the cursor sits atop the represented gate location), showing the assigned Pauli channel probabilities $p_X$, $p_Y$, $p_Z$, per-qubit cumulative decoherence, many-shot zero-error survival, and the downstream burden $b_k$ and halo intensity $\tilde  {b}_k$ (Eq.~\ref {eq:burden}, Eq.~\ref {eq:halo_norm}) that determine the gate's color in the heatmap.}}{7}{figure.caption.21}\protected@file@percent }
+\newlabel{fig:interactive_panel}{{3}{7}{Panel mode of the interactive diagnostic interface. \textbf {Left}: the aggregate error heatmap with gate and wire halos. \textbf {Right}: the \texttt {ipywidgets.Output} panel populated by clicking the cursor over the CNOT gate on qubits $[0,\,2]$ at $t=2$ (the cursor sits atop the represented gate location), showing the assigned Pauli channel probabilities $p_X$, $p_Y$, $p_Z$, per-qubit cumulative decoherence, many-shot zero-error survival, and the downstream burden $b_k$ and halo intensity $\tilde {b}_k$ (Eq.~\ref {eq:burden}, Eq.~\ref {eq:halo_norm}) that determine the gate's color in the heatmap}{figure.caption.21}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Hover (tooltip) mode of the interactive diagnostic interface. Hovering the cursor over an element (here the idle interval on qubit $[2]$ at $t=1$, with the cursor sitting atop the represented location) raises an inline tooltip reporting the gate type and timestep, the noise-model gate-error bounds, the assigned Pauli channel probabilities, per-qubit accumulated bit/phase decoherence, the many-shot observed errors-per-shot and zero-error survival, and the downstream burden $b_k$ and halo intensity $\tilde  {b}_k$ (Eq.~\ref {eq:burden}, Eq.~\ref {eq:halo_norm}) that determine the element's color in the heatmap.}}{8}{figure.caption.22}\protected@file@percent }
 \newlabel{fig:interactive_annotate}{{4}{8}{Hover (tooltip) mode of the interactive diagnostic interface. Hovering the cursor over an element (here the idle interval on qubit $[2]$ at $t=1$, with the cursor sitting atop the represented location) raises an inline tooltip reporting the gate type and timestep, the noise-model gate-error bounds, the assigned Pauli channel probabilities, per-qubit accumulated bit/phase decoherence, the many-shot observed errors-per-shot and zero-error survival, and the downstream burden $b_k$ and halo intensity $\tilde {b}_k$ (Eq.~\ref {eq:burden}, Eq.~\ref {eq:halo_norm}) that determine the element's color in the heatmap}{figure.caption.22}{}}
 \citation{nielsen2002}
@@ -123,7 +123,7 @@
 \@writefile{toc}{\contentsline {paragraph}{Measurement metric.}{10}{section*.30}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Sequences.}{10}{section*.31}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Results.}{10}{section*.34}\protected@file@percent }
-\citation{nielsen2010quantum}
+\citation{nielsenchuang2000}
 \@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces  Aggregate error heatmap for a 13-qubit GHZ state under an \texttt  {ibm\_eagle\_r3} hardware noise profile, aggregated over 4\,096 shots with a Pauli-twirled noise model. The simulated fidelity is $0.7670$, compared with a reported \texttt  {ibm\_eagle\_r3} (18q) device fidelity of $0.5165$, a difference of $0.2505$. }}{11}{figure.caption.28}\protected@file@percent }
 \newlabel{fig:ghz_heatmap}{{5}{11}{Aggregate error heatmap for a 13-qubit GHZ state under an \texttt {ibm\_eagle\_r3} hardware noise profile, aggregated over 4\,096 shots with a Pauli-twirled noise model. The simulated fidelity is $0.7670$, compared with a reported \texttt {ibm\_eagle\_r3} (18q) device fidelity of $0.5165$, a difference of $0.2505$}{figure.caption.28}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Dynamical decoupling sequences compared in the NoisiQ 8-qubit GHZ storage example. All sequences are applied over the same 32-layer idle window under an identical quasi-static $Z$-drift noise model.}}{11}{table.caption.32}\protected@file@percent }
@@ -133,6 +133,13 @@
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Dynamical decoupling on an 8-qubit GHZ storage circuit (32 idle layers) under an \texttt  {ibm\_eagle\_r3} noise profile with quasi-static idle-$Z$ drift. The panels show the No DD, XY-4, XY-8, and CPMG sequences from top to bottom, each with its error-burden heatmap and metric box. GHZ-state fidelity, measured at the storage-window exit, and global purity both rise above the undecoupled baseline for the decoupled sequences.}}{12}{figure.caption.33}\protected@file@percent }
 \newlabel{fig:dd_panel}{{6}{12}{Dynamical decoupling on an 8-qubit GHZ storage circuit (32 idle layers) under an \texttt {ibm\_eagle\_r3} noise profile with quasi-static idle-$Z$ drift. The panels show the No DD, XY-4, XY-8, and CPMG sequences from top to bottom, each with its error-burden heatmap and metric box. GHZ-state fidelity, measured at the storage-window exit, and global purity both rise above the undecoupled baseline for the decoupled sequences}{figure.caption.33}{}}
 \citation{quirk}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces  Aggregate error heatmap for the faithful (non-Clifford) 3-qubit QFT under the \texttt  {ibm\_eagle\_r3} $T_1/T_2$ hardware profile (Pauli-twirled), averaged over 600 trajectory shots. \textbf  {Gate halos} (red scale) reflect downstream propagation burden (Eq.~\ref {eq:burden}); \textbf  {idle halos} (blue scale) reflect $T_1/T_2$ decoherence on idling qubits. The metric box reports the trajectory fidelity $F$, global purity $\text  {Tr}(\rho ^2)$, and zero-error shot fraction. Per-gate error rates are sampled exactly; the burden walk evaluates propagation under Clifford conjugation and treats the non-Clifford CS and $P(\pm \pi /8)$ gates as transparent, so the forward-spread halo component is approximate on those gates. }}{13}{figure.caption.35}\protected@file@percent }
+\newlabel{fig:qft_heatmap}{{7}{13}{Aggregate error heatmap for the faithful (non-Clifford) 3-qubit QFT under the \texttt {ibm\_eagle\_r3} $T_1/T_2$ hardware profile (Pauli-twirled), averaged over 600 trajectory shots. \textbf {Gate halos} (red scale) reflect downstream propagation burden (Eq.~\ref {eq:burden}); \textbf {idle halos} (blue scale) reflect $T_1/T_2$ decoherence on idling qubits. The metric box reports the trajectory fidelity $F$, global purity $\text {Tr}(\rho ^2)$, and zero-error shot fraction. Per-gate error rates are sampled exactly; the burden walk evaluates propagation under Clifford conjugation and treats the non-Clifford CS and $P(\pm \pi /8)$ gates as transparent, so the forward-spread halo component is approximate on those gates}{figure.caption.35}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{13}{section.7}\protected@file@percent }
+\newlabel{sec:conclusion}{{7}{13}{Conclusion}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{}{13}{section*.36}\protected@file@percent }
+\newlabel{sec:future_work}{{7}{13}{Future Work}{section*.37}{}}
+\@writefile{toc}{\contentsline {paragraph}{}{13}{section*.38}\protected@file@percent }
 \citation{qiskit2024}
 \citation{stim2021}
 \bibstyle{ieeetr}
@@ -140,30 +147,33 @@
 \bibcite{preskill2018}{1}
 \bibcite{tripathi2022}{2}
 \bibcite{qiskit2024}{3}
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces  Aggregate error heatmap for the faithful (non-Clifford) 3-qubit QFT under the \texttt  {ibm\_eagle\_r3} $T_1/T_2$ hardware profile (Pauli-twirled), averaged over 600 trajectory shots. \textbf  {Gate halos} (red scale) reflect downstream propagation burden (Eq.~\ref {eq:burden}); \textbf  {idle halos} (blue scale) reflect $T_1/T_2$ decoherence on idling qubits. The metric box reports the trajectory fidelity $F$, global purity $\text  {Tr}(\rho ^2)$, and zero-error shot fraction. Per-gate error rates are sampled exactly; the burden walk evaluates propagation under Clifford conjugation and treats the non-Clifford CS and $P(\pm \pi /8)$ gates as transparent, so the forward-spread halo component is approximate on those gates. }}{13}{figure.caption.35}\protected@file@percent }
-\newlabel{fig:qft_heatmap}{{7}{13}{Aggregate error heatmap for the faithful (non-Clifford) 3-qubit QFT under the \texttt {ibm\_eagle\_r3} $T_1/T_2$ hardware profile (Pauli-twirled), averaged over 600 trajectory shots. \textbf {Gate halos} (red scale) reflect downstream propagation burden (Eq.~\ref {eq:burden}); \textbf {idle halos} (blue scale) reflect $T_1/T_2$ decoherence on idling qubits. The metric box reports the trajectory fidelity $F$, global purity $\text {Tr}(\rho ^2)$, and zero-error shot fraction. Per-gate error rates are sampled exactly; the burden walk evaluates propagation under Clifford conjugation and treats the non-Clifford CS and $P(\pm \pi /8)$ gates as transparent, so the forward-spread halo component is approximate on those gates}{figure.caption.35}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusion}{13}{section.7}\protected@file@percent }
-\newlabel{sec:conclusion}{{7}{13}{Conclusion}{section.7}{}}
-\newlabel{sec:future_work}{{7}{13}{Future Work}{section*.36}{}}
-\@writefile{toc}{\contentsline {paragraph}{}{13}{section*.37}\protected@file@percent }
-\newlabel{sec:acknowledgments}{{7}{13}{Acknowledgments}{section*.38}{}}
-\@writefile{toc}{\contentsline {paragraph}{}{13}{section*.39}\protected@file@percent }
 \bibcite{stim2021}{4}
-\bibcite{openqasm2017}{5}
-\bibcite{ibm_platform}{6}
-\bibcite{abughanem2024}{7}
-\bibcite{quantinuum_h2_emergentmind}{8}
-\bibcite{quantinuum_h2_docs}{9}
-\bibcite{ionq_forte}{10}
-\bibcite{ionq_forte_first}{11}
-\bibcite{vandennest2008}{12}
-\bibcite{geller2013}{13}
-\bibcite{wallman2016}{14}
-\bibcite{emerson2007}{15}
-\bibcite{nielsenchuang2000}{16}
-\bibcite{nielsen2002}{17}
-\bibcite{quirk}{18}
-\bibcite{ionq_aria}{19}
+\bibcite{krantz2019superconducting}{5}
+\bibcite{kjaergaard2020superconducting}{6}
+\bibcite{arute2019quantum}{7}
+\bibcite{ibm2023condor}{8}
+\bibcite{cai2019constructing}{9}
+\bibcite{hashim2021randomized}{10}
+\bibcite{openqasm2017}{11}
+\bibcite{ibm_platform}{12}
+\bibcite{abughanem2024}{13}
+\bibcite{quantinuum_h2_emergentmind}{14}
+\bibcite{quantinuum_h2_docs}{15}
+\bibcite{ionq_forte}{16}
+\bibcite{ionq_forte_first}{17}
+\bibcite{vandennest2008}{18}
+\bibcite{geller2013}{19}
+\newlabel{sec:acknowledgments}{{7}{14}{Acknowledgments}{section*.39}{}}
+\@writefile{toc}{\contentsline {paragraph}{}{14}{section*.40}\protected@file@percent }
+\bibcite{wallman2016}{20}
+\bibcite{emerson2007}{21}
+\bibcite{nielsenchuang2000}{22}
+\bibcite{nielsen2002}{23}
+\bibcite{viola1999dynamical}{24}
+\bibcite{quirk}{25}
+\bibcite{ionq_aria}{26}
+\bibcite{grover1996fast}{27}
+\bibcite{deutsch1992rapid}{28}
 \citation{ibm_platform}
 \citation{abughanem2024}
 \citation{abughanem2024}
@@ -172,23 +182,43 @@
 \citation{ionq_forte}
 \citation{ionq_forte_first}
 \citation{ionq_aria}
-\@writefile{toc}{\contentsline {section}{\numberline {A}Hardware Noise Profiles}{15}{appendix.A}\protected@file@percent }
-\newlabel{sec:hardware_profiles}{{A}{15}{Hardware Noise Profiles}{appendix.A}{}}
-\@writefile{toc}{\contentsline {paragraph}{}{15}{section*.41}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}IBM Heron r3 \cite  {ibm_platform, abughanem2024}}{15}{subsection.A.1}\protected@file@percent }
-\newlabel{subsec:profile_heron}{{A.1}{15}{IBM Heron r3 \cite {ibm_platform, abughanem2024}}{subsection.A.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}IBM Eagle r3 \cite  {abughanem2024}}{15}{subsection.A.2}\protected@file@percent }
-\newlabel{subsec:profile_eagle}{{A.2}{15}{IBM Eagle r3 \cite {abughanem2024}}{subsection.A.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Quantinuum H2-1 \cite  {quantinuum_h2_emergentmind, quantinuum_h2_docs}}{15}{subsection.A.3}\protected@file@percent }
-\newlabel{subsec:profile_h2}{{A.3}{15}{Quantinuum H2-1 \cite {quantinuum_h2_emergentmind, quantinuum_h2_docs}}{subsection.A.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}IonQ Forte \cite  {ionq_forte, ionq_forte_first}}{15}{subsection.A.4}\protected@file@percent }
-\newlabel{subsec:profile_forte}{{A.4}{15}{IonQ Forte \cite {ionq_forte, ionq_forte_first}}{subsection.A.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {A.5}IonQ Aria \cite  {ionq_aria}}{15}{subsection.A.5}\protected@file@percent }
-\newlabel{subsec:profile_aria}{{A.5}{15}{IonQ Aria \cite {ionq_aria}}{subsection.A.5}{}}
-\newlabel{sec:supporting_code}{{A.5}{15}{Supporting Examples / Code}{section*.42}{}}
-\newlabel{subsec:grovers}{{A.5}{15}{Grover's Algorithm}{section*.43}{}}
-\newlabel{subsec:dj}{{A.5}{15}{Deutsch-Jozsa Algorithm}{section*.44}{}}
-\newlabel{subsec:dj}{{A.5}{15}{Quantum Phase Estimation}{section*.45}{}}
-\newlabel{paragraph:hardware_comp}{{A.5}{15}{Hardware Noise Comparison}{section*.46}{}}
-\@writefile{toc}{\contentsline {paragraph}{Hardware Noise Comparison}{15}{section*.46}\protected@file@percent }
-\gdef \@abspage@last{15}
+\citation{grover1996fast}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Hardware Noise Profiles}{16}{appendix.A}\protected@file@percent }
+\newlabel{sec:hardware_profiles}{{A}{16}{Hardware Noise Profiles}{appendix.A}{}}
+\@writefile{toc}{\contentsline {paragraph}{}{16}{section*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.1}IBM Heron r3 \cite  {ibm_platform, abughanem2024}}{16}{subsection.A.1}\protected@file@percent }
+\newlabel{subsec:profile_heron}{{A.1}{16}{IBM Heron r3 \cite {ibm_platform, abughanem2024}}{subsection.A.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.2}IBM Eagle r3 \cite  {abughanem2024}}{16}{subsection.A.2}\protected@file@percent }
+\newlabel{subsec:profile_eagle}{{A.2}{16}{IBM Eagle r3 \cite {abughanem2024}}{subsection.A.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.3}Quantinuum H2-1 \cite  {quantinuum_h2_emergentmind, quantinuum_h2_docs}}{16}{subsection.A.3}\protected@file@percent }
+\newlabel{subsec:profile_h2}{{A.3}{16}{Quantinuum H2-1 \cite {quantinuum_h2_emergentmind, quantinuum_h2_docs}}{subsection.A.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.4}IonQ Forte \cite  {ionq_forte, ionq_forte_first}}{16}{subsection.A.4}\protected@file@percent }
+\newlabel{subsec:profile_forte}{{A.4}{16}{IonQ Forte \cite {ionq_forte, ionq_forte_first}}{subsection.A.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {A.5}IonQ Aria \cite  {ionq_aria}}{16}{subsection.A.5}\protected@file@percent }
+\newlabel{subsec:profile_aria}{{A.5}{16}{IonQ Aria \cite {ionq_aria}}{subsection.A.5}{}}
+\newlabel{sec:supporting_code}{{A.5}{16}{Supporting Examples / Code}{section*.43}{}}
+\newlabel{subsec:grovers}{{A.5}{16}{Grover's Algorithm}{section*.44}{}}
+\citation{deutsch1992rapid}
+\citation{nielsenchuang2000}
+\newlabel{subsec:dj}{{A.5}{17}{Deutsch--Jozsa Algorithm}{section*.46}{}}
+\newlabel{subsec:qpe}{{A.5}{17}{Quantum Phase Estimation}{section*.48}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces  Aggregate error heatmap for a 3-qubit Grover search targeting $\ket {111}$ over two iterations, under an \texttt  {ibm\_eagle\_r3} hardware noise profile aggregated over 2\,000 shots. Red gate and wire halos encode the expected per-shot gate error burden, which concentrates on the two-qubit CCZ gadgets (the oracle and diffuser reflections) and is minimal on the single-qubit $H$/$X$ layers. The metric box reports the ideal-state fidelity $F = 0.8383$ (overlap of the noisy state with the full noiseless output) and the marked-state success probability $P(\ket {111}) = 0.7944$ (noiseless $\approx 0.94$). The per-qubit marginal purities after tracing out the other qubits are $\mathrm  {Tr}(\rho _{q}^2) \approx 0.81$--$0.82$. }}{18}{figure.caption.45}\protected@file@percent }
+\newlabel{fig:grover_heatmap}{{8}{18}{Aggregate error heatmap for a 3-qubit Grover search targeting $\ket {111}$ over two iterations, under an \texttt {ibm\_eagle\_r3} hardware noise profile aggregated over 2\,000 shots. Red gate and wire halos encode the expected per-shot gate error burden, which concentrates on the two-qubit CCZ gadgets (the oracle and diffuser reflections) and is minimal on the single-qubit $H$/$X$ layers. The metric box reports the ideal-state fidelity $F = 0.8383$ (overlap of the noisy state with the full noiseless output) and the marked-state success probability $P(\ket {111}) = 0.7944$ (noiseless $\approx 0.94$). The per-qubit marginal purities after tracing out the other qubits are $\mathrm {Tr}(\rho _{q}^2) \approx 0.81$--$0.82$}{figure.caption.45}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces  Aggregate error heatmap for the 3-qubit Deutsch--Jozsa algorithm with a balanced oracle, under an \texttt  {ibm\_eagle\_r3} hardware noise profile aggregated over 2\,000 shots. Red gate and wire halos encode the expected per-shot gate error burden, which concentrates on the two oracle CNOT layers ($t=2$, $t=3$); the blue gradient shows idle $T_1/T_2$ decoherence accumulating on the input qubits. The metric box reports the ideal-state fidelity $F = 0.9400$ and the marked-state success probability $P(\ket {11}) = 0.9525$ (noiseless $P(\ket {11}) = 1$). }}{18}{figure.caption.47}\protected@file@percent }
+\newlabel{fig:dj_heatmap}{{9}{18}{Aggregate error heatmap for the 3-qubit Deutsch--Jozsa algorithm with a balanced oracle, under an \texttt {ibm\_eagle\_r3} hardware noise profile aggregated over 2\,000 shots. Red gate and wire halos encode the expected per-shot gate error burden, which concentrates on the two oracle CNOT layers ($t=2$, $t=3$); the blue gradient shows idle $T_1/T_2$ decoherence accumulating on the input qubits. The metric box reports the ideal-state fidelity $F = 0.9400$ and the marked-state success probability $P(\ket {11}) = 0.9525$ (noiseless $P(\ket {11}) = 1$)}{figure.caption.47}{}}
+\newlabel{subsec:code_listings}{{A.5}{19}{Code Listings}{section*.50}{}}
+\newlabel{lst:pipeline}{{1}{19}{The NoisiQ pipeline. Every example in the paper is this template with a different circuit builder in step (1). Here a GHZ circuit is run under a hardware noise profile and its state fidelity and global purity are reported}{lstlisting.1}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}{\ignorespaces The NoisiQ pipeline. Every example in the paper is this template with a different circuit builder in step (1). Here a GHZ circuit is run under a hardware noise profile and its state fidelity and global purity are reported.}}{19}{lstlisting.1}\protected@file@percent }
+\newlabel{lst:noise_hw}{{2}{19}{Passing a noise model from a hardware profile. \texttt {list\_hardware()} enumerates the registry; the chosen profile builds a per-operation channel dictionary}{lstlisting.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}{\ignorespaces Passing a noise model from a hardware profile. \texttt  {list\_hardware()} enumerates the registry; the chosen profile builds a per-operation channel dictionary.}}{19}{lstlisting.2}\protected@file@percent }
+\newlabel{lst:noise_manual}{{3}{19}{A hand-built Pauli noise model. The model is a dict from operation index to a channel; here a larger error rate is assigned to two-qubit gates than to single-qubit gates, with an X bias}{lstlisting.3}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}{\ignorespaces A hand-built Pauli noise model. The model is a dict from operation index to a channel; here a larger error rate is assigned to two-qubit gates than to single-qubit gates, with an X bias.}}{19}{lstlisting.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces  Aggregate error heatmap for the three-counting-qubit quantum phase estimation circuit ($U = P(\pi /4)$, $\theta = 1/8$), under an \texttt  {ibm\_eagle\_r3} hardware noise profile (heatmap aggregated over 2\,000 shots). Red gate and wire halos encode the expected per-shot gate error burden, which concentrates on the CNOT pairs inside the controlled-$U^{2^k}$ and inverse-QFT controlled-phase gadgets; the blue gradient shows idle $T_1/T_2$ decoherence on the counting qubits. The metric box reports the ideal-state fidelity $F = 0.7414$, the readout success probability $P(\ket {100}) = 0.7580 \pm 0.0175$ from a 600-trajectory pass (noiseless $P(\ket {100}) = 1$), and the recovered phase $\hat  \theta = 1/8$. The counting bitstring is written $q_0 q_1 q_2$ with $q_0$ the least-significant bit. }}{20}{figure.caption.49}\protected@file@percent }
+\newlabel{fig:qpe_heatmap}{{10}{20}{Aggregate error heatmap for the three-counting-qubit quantum phase estimation circuit ($U = P(\pi /4)$, $\theta = 1/8$), under an \texttt {ibm\_eagle\_r3} hardware noise profile (heatmap aggregated over 2\,000 shots). Red gate and wire halos encode the expected per-shot gate error burden, which concentrates on the CNOT pairs inside the controlled-$U^{2^k}$ and inverse-QFT controlled-phase gadgets; the blue gradient shows idle $T_1/T_2$ decoherence on the counting qubits. The metric box reports the ideal-state fidelity $F = 0.7414$, the readout success probability $P(\ket {100}) = 0.7580 \pm 0.0175$ from a 600-trajectory pass (noiseless $P(\ket {100}) = 1$), and the recovered phase $\hat \theta = 1/8$. The counting bitstring is written $q_0 q_1 q_2$ with $q_0$ the least-significant bit}{figure.caption.49}{}}
+\@writefile{toc}{\contentsline {paragraph}{GHZ state (Section~\ref {subsec:GHZ}).}{20}{section*.51}\protected@file@percent }
+\newlabel{lst:ghz}{{4}{20}{Building and running the $N$-qubit GHZ example. The Clifford circuit is sent to Stim via \texttt {ManyShotRunner} for error statistics; \texttt {TrajectoryBackend} provides the density matrix for the reported metrics}{lstlisting.4}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}{\ignorespaces Building and running the $N$-qubit GHZ example. The Clifford circuit is sent to Stim via \texttt  {ManyShotRunner} for error statistics; \texttt  {TrajectoryBackend} provides the density matrix for the reported metrics.}}{20}{lstlisting.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Bell parity check (Section~\ref {subsec:heatmap}).}{20}{section*.52}\protected@file@percent }
+\newlabel{lst:bell}{{5}{20}{The Bell parity-check circuit with a mid-circuit measurement (\texttt {measure(..., reset=True)}) and a conditional correction (\texttt {c\_if(...).x(...)}). \texttt {syndrome[0]} is a classical bit allocated on the circuit}{lstlisting.5}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {5}{\ignorespaces The Bell parity-check circuit with a mid-circuit measurement (\texttt  {measure(..., reset=True)}) and a conditional correction (\texttt  {c\_if(...).x(...)}). \texttt  {syndrome[0]} is a classical bit allocated on the circuit.}}{20}{lstlisting.5}\protected@file@percent }
+\gdef \@abspage@last{21}

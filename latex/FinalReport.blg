@@ -5,56 +5,44 @@ Reallocating 'name_of_file' (item size: 1) to 7 items.
 The style file: ieeetr.bst
 Reallocating 'name_of_file' (item size: 1) to 5 items.
 Database file #1: refs.bib
-Warning--I didn't find a database entry for "preskill2018nisq"
-Warning--I didn't find a database entry for "krantz2019superconducting"
-Warning--I didn't find a database entry for "kjaergaard2020superconducting"
-Warning--I didn't find a database entry for "arute2019quantum"
-Warning--I didn't find a database entry for "ibm2023condor"
-Warning--I didn't find a database entry for "cai2019constructing"
-Warning--I didn't find a database entry for "hashim2021randomized"
-Warning--I didn't find a database entry for "qiskit2024aer"
-Warning--I didn't find a database entry for "gidney2021stim"
-Warning--I didn't find a database entry for "viola1999dynamical"
-Warning--I didn't find a database entry for "nielsen2010quantum"
-You've used 19 entries,
+You've used 28 entries,
             1876 wiz_defined-function locations,
-            592 strings with 6710 characters,
-and the built_in function-call counts, 3945 in all, are:
-= -- 378
-> -- 170
+            644 strings with 8558 characters,
+and the built_in function-call counts, 6944 in all, are:
+= -- 680
+> -- 306
 < -- 0
-+ -- 67
-- -- 48
-* -- 236
-:= -- 587
-add.period$ -- 27
-call.type$ -- 19
-change.case$ -- 18
++ -- 116
+- -- 88
+* -- 449
+:= -- 999
+add.period$ -- 37
+call.type$ -- 28
+change.case$ -- 27
 chr.to.int$ -- 0
-cite$ -- 19
-duplicate$ -- 200
-empty$ -- 391
-format.name$ -- 48
-if$ -- 973
+cite$ -- 28
+duplicate$ -- 356
+empty$ -- 640
+format.name$ -- 88
+if$ -- 1710
 int.to.chr$ -- 0
-int.to.str$ -- 19
-missing$ -- 13
-newline$ -- 68
-num.names$ -- 19
-pop$ -- 79
+int.to.str$ -- 28
+missing$ -- 21
+newline$ -- 96
+num.names$ -- 28
+pop$ -- 102
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 133
+skip$ -- 266
 stack$ -- 0
-substring$ -- 118
-swap$ -- 76
+substring$ -- 320
+swap$ -- 160
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
 warning$ -- 0
-while$ -- 30
-width$ -- 21
-write$ -- 187
-(There were 11 warnings)
+while$ -- 57
+width$ -- 30
+write$ -- 283
