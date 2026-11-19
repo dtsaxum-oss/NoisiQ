@@ -268,10 +268,10 @@ def test_c_if_schedules_after_qubits():
     c.h(0)            # t=0 q0
     c.cnot(0, 1)      # t=1 q0,q1
     c.measure(0, reg[0])   # t=2 q0
-    c.c_if(reg[0]).x(1)   # q1 last at t=1 → conditional X at t=2
+    c.c_if(reg[0]).x(1)   # q1 free at t=2, but c[0] is written at t=2 → X at t=3
     cond = c.operations[-1]
     assert isinstance(cond, ConditionalOp)
-    assert cond.t == 2
+    assert cond.t == 3
 
 
 def test_c_if_value_zero():

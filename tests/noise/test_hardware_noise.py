@@ -92,7 +92,7 @@ def test_profile_repr(eagle_profile):
 def test_profile_describe(eagle_profile):
     d = eagle_profile.describe()
     assert d["name"] == "ibm_eagle_r3"
-    assert d["t2_us"] == pytest.approx(177.0)
+    assert d["t2_us"] == pytest.approx(147.0)
     assert "gate_times_ns" in d
     assert len(d["ghz_results"]) == 3
 
@@ -159,14 +159,14 @@ def test_list_hardware_returns_sorted():
 
 def test_list_hardware_contains_preloaded():
     names = list_hardware()
-    for expected in ["ibm_eagle_r3", "ibm_heron_r2", "ionq_forte", "quantinuum_h2"]:
+    for expected in ["ibm_eagle_r3", "ibm_heron_r3", "ionq_forte", "quantinuum_h2"]:
         assert expected in names
 
 
 def test_get_hardware_returns_correct_profile():
-    p = get_hardware("ibm_heron_r2")
+    p = get_hardware("ibm_heron_r3")
     assert p.vendor == "IBM"
-    assert p.t1 == pytest.approx(300e-6)
+    assert p.t1 == pytest.approx(269e-6)
 
 
 def test_get_hardware_missing_raises_key_error():
@@ -327,7 +327,7 @@ from noisiq.noise.coherent_errors import CoherentRotation as _CoherentRotation
 
 @pytest.fixture
 def heron_profile():
-    return get_hardware("ibm_heron_r2")
+    return get_hardware("ibm_heron_r3")
 
 
 @pytest.fixture

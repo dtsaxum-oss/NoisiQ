@@ -47,16 +47,6 @@ def test_scaffold_uses_measure_reset_on_resource_wires_when_ry_patch_is_applied(
     assert len(reset_measurements) == 8
 
 
-@pytest.mark.xfail(
-    reason=(
-        "The [[4,2,2]] encoding/decoding CNOT network and CH-gadget target mapping "
-        "do not yet match arXiv:1204.4221 Fig. 2/4.  At p=0 the acceptance probability "
-        "is ~0.5625 instead of 1.0 — roughly 7/16 of branches are rejected because "
-        "the syndrome qubits are left in mixed states after the circuit.  "
-        "Remove xfail once the encoding network is corrected."
-    ),
-    strict=True,
-)
 def test_mek_p0_all_branches_have_accepted_syndrome():
     """Sentinel: at p=0 every measurement branch must pass post-selection.
 

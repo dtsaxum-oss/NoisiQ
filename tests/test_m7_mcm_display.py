@@ -276,12 +276,16 @@ class TestComputeDownstreamImpact:
         from noisiq.noise.pauli_error import PauliError
         circuit = _make_simple_circuit_no_mcm()
         noise = {0: PauliError(p_x=0.05, p_y=0.05, p_z=0.02)}
-        impact_unweighted = _compute_downstream_impact(circuit)
         impact_weighted = _compute_downstream_impact(circuit, noise_config=noise)
-        # Weighted impact at gate 0 should equal unweighted * p_total
-        if impact_unweighted[0] > 0:
-            ratio = impact_weighted[0] / impact_unweighted[0]
-            assert abs(ratio - 0.12) < 1e-9
+        # Weighted impact is the expectation sum_E p(E) * spread(E) over the
+        # channel's Pauli outcomes; get each spread from a p=1 channel.
+        spread = {
+            pauli: _compute_downstream_impact(circuit, noise_config={0: PauliError(*probs)})[0]
+            for pauli, probs in {"X": (1, 0, 0), "Y": (0, 1, 0), "Z": (0, 0, 1)}.items()
+        }
+        expected = 0.05 * spread["X"] + 0.05 * spread["Y"] + 0.02 * spread["Z"]
+        assert impact_weighted[0] > 0
+        assert abs(impact_weighted[0] - expected) < 1e-9
 
 
 # ---------------------------------------------------------------------------

@@ -291,7 +291,7 @@ class TestFormatMeasurementMode:
     def test_format_compact_contains_p_wrong(self):
         info = self._make_meas_info(with_noise=True)
         text = GateInfoExtractor.format_compact(info)
-        assert "P(wrong)" in text
+        assert "P(wrong readout)" in text
 
     def test_format_for_display_does_not_crash(self):
         info = self._make_meas_info(with_noise=True)
